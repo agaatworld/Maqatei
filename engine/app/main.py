@@ -22,6 +22,7 @@ STATIC = Path(__file__).parent / "static"
 ANDROID = "com.termux" in os.environ.get("PREFIX", "") or os.path.exists("/system/build.prop")
 APK = media.APK                                  # running inside the Maqati Android app (no Termux)
 HOSTED = os.environ.get("MAQATI_HOSTED") == "1"   # running behind the multi-user gateway on a shared server
+DESKTOP = os.environ.get("MAQATI_DESKTOP") == "1" # the Windows / Mac app (desktop/maqati_desktop.py)
 for ext, t in {".m4a": "audio/mp4", ".mp3": "audio/mpeg", ".webm": "video/webm", ".mkv": "video/x-matroska",
                ".opus": "audio/ogg", ".srt": "text/plain", ".txt": "text/plain", ".webmanifest": "application/manifest+json",
                ".js": "text/javascript", ".css": "text/css"}.items():
@@ -953,7 +954,7 @@ def health(r):
     ver = media.ytdlp_version()
     return {"version": VERSION, "apk": APK, "cookies": bool(media.cookies_file()), "ffmpeg": bool(media.FFMPEG), "ytdlp": ver, "offline_engine": transcribe.engine_ok(),
             "js": media.JS_RUNTIME, "library": "-" if HOSTED else str(db.LIBRARY), "update": _update, "android": ANDROID,
-            "hosted": HOSTED, "user": os.environ.get("MAQATI_USERNAME") if HOSTED else None}
+            "hosted": HOSTED, "desktop": DESKTOP, "user": os.environ.get("MAQATI_USERNAME") if HOSTED else None}
 
 
 @route("POST", "/api/test-transcription")
@@ -1298,8 +1299,9 @@ def main():
     jobs.start()
     if db.get_settings().get("lan_on") and not HOSTED:
         lan.start(Handler)
-    if APK:
+    if APK or DESKTOP:
         media.auto_update_ytdlp(_update)
+    if APK:
         import signal
 
         def stop(*_):

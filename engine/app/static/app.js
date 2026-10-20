@@ -27,6 +27,7 @@ const TX = {
   queued_n: ['{0} added to Tasks', 'أُضيفت {0} إلى المهام'], nothing_to_do: ['Everything here is already transcribed', 'كل ما هنا مُفرَّغ مسبقًا'],
   links: ['Links', 'روابط'], files: ['Files', 'ملفات'], links_ph: ['Paste one or many links — one per line', 'الصق رابطًا أو أكثر — كل رابط في سطر'],
   links_hint: ['YouTube, SoundCloud and most audio/video sites.', 'يوتيوب وساوند كلاود ومعظم مواقع الصوت والمرئي.'],
+  links_hint_web: ['On the web version: YouTube links only, through free mirror servers (they are sometimes slow or down). Other sites need the Android or desktop app.', 'في نسخة الويب: روابط يوتيوب فقط، عبر خوادم وسيطة مجانية (تكون أحيانًا بطيئة أو معطّلة). المواقع الأخرى تحتاج تطبيق الأندرويد أو الكمبيوتر.'],
   choose_files: ['Choose from device', 'اختر من الجهاز'], drop: ['or drop files here', 'أو اسحب الملفات هنا'],
   into_folder: ['Save in folder', 'احفظ في مجلد'], uploading: ['Uploading… {0}%', 'جارٍ الرفع… {0}٪'],
   added: ['Added ✓', 'أُضيف ✓'], no_links: ['Paste a link first', 'الصق رابطًا أولًا'], choose_first: ['Choose files first', 'اختر الملفات أولًا'],
@@ -822,11 +823,11 @@ async function customizeFolder(f) {
 async function addSheet() {
   await loadLib();
   const cur = (location.hash.match(/^#\/lib\/f\/(\d+)/) || [])[1] || (S.item && S.item.folder_id) || '';
-  let mode = IS_WEB ? 'files' : store.get('addmode', 'links'), files = [], how = S.set.auto_download || 'video';
+  let mode = store.get('addmode', 'links'), files = [], how = S.set.auto_download || 'video';
   const folderOpts = `<option value="">${t('unsorted')}</option>` + S.folders.map(f => `<option value="${f.id}" ${String(cur) === String(f.id) ? 'selected' : ''}>${esc((f.icon || '📁') + ' ' + f.name)}</option>`).join('');
   await sheet('＋ ' + t('add'), `
-    <div class="segc big" style="margin-bottom:14px"${IS_WEB ? ' hidden' : ''}><button data-m="links">🔗 ${t('links')}</button><button data-m="files">📁 ${t('files')}</button></div>
-    <div data-p="links"><div class="field"><textarea id="linksIn" dir="ltr" placeholder="${t('links_ph')}" style="min-height:110px"></textarea><small>${t('links_hint')}</small></div>
+    <div class="segc big" style="margin-bottom:14px"><button data-m="links">🔗 ${t('links')}</button><button data-m="files">📁 ${t('files')}</button></div>
+    <div data-p="links"><div class="field"><textarea id="linksIn" dir="ltr" placeholder="${t('links_ph')}" style="min-height:110px"></textarea><small>${t(IS_WEB ? 'links_hint_web' : 'links_hint')}</small></div>
       <div class="field"><label>${t('add_how')}</label>${segc('how', how, [['video', t('as_video')], ['audio', t('as_audio')], ['none', t('as_link')]])}<small>${t('add_how_p')}</small></div>
       <div class="field" id="addQF"><label>🎬 ${t('quality')}</label><select id="addQ"><option value="">${t('q_default', S.set.video_height >= 9999 ? t('q_orig') : (S.set.video_height || 720) + 'p')}</option>
         <option value="9999">⭐ ${t('q_orig')}</option>${[1080, 720, 480, 360, 240, 144].map(h => `<option value="${h}">${h}p</option>`).join('')}</select></div></div>
@@ -1635,7 +1636,11 @@ async function vSettings() {
       <div class="btns"><button class="btn pri big" data-act="apk-update">🔍 ${t('upd_find')}</button></div>
       <div class="btns" style="margin-top:10px"><button class="btn" data-act="upd-ytdlp">⬇ ${t('upd_ytdlp')}</button><span class="muted small" id="ytdlpMsg">${esc(h.update.msg)}</span></div>
       ${window.MaqatiApp ? `<div class="btns" style="margin-top:10px"><button class="btn ghost" data-act="apk-battery">🔋 ${LANG === 'ar' ? 'السماح بالعمل في الخلفية' : 'Allow background work'}</button></div>` : ''}</div>` : ''}
-    ${h.hosted || h.apk || h.web ? '' : `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
+    ${h.desktop ? `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
+      <p class="muted">${t('version')}: <b>${esc(h.version)}</b></p>
+      <div class="btns"><a class="btn pri big" href="https://github.com/beaconcrest8/maqati/releases/latest" target="_blank">⬇ ${t('upd_find')}</a></div>
+      <div class="btns" style="margin-top:10px"><button class="btn" data-act="upd-ytdlp">⬇ ${t('upd_ytdlp')}</button><span class="muted small" id="ytdlpMsg">${esc(h.update.msg)}</span></div></div>` : ''}
+    ${h.hosted || h.apk || h.web || h.desktop ? '' : `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
       <p class="muted">${t('version')}: <b>${esc(h.version)}</b></p>
       <div class="btns"><button class="btn pri big" data-act="upd-find">🔍 ${t('upd_find')}</button><button class="btn big" data-act="upd-file">📦 ${t('upd_file')}</button>
         <input type="file" id="updFile" accept=".zip,application/zip" hidden></div><div id="updMsg" style="margin-top:10px"></div>

@@ -17,7 +17,7 @@ const P = process.argv[2], URL0 = process.argv[3] || 'https://beaconcrest8.githu
   // set a key so transcription is allowed
   console.log(await pg.evaluate(async () => (await fetch('api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groq_key: 'gsk_test' }) })).status));
   // add a file
-  await pg.click('[data-act="add"] >> nth=0'); await pg.waitForTimeout(600);
+  await pg.click('[data-act="add"] >> nth=0'); await pg.waitForTimeout(600); await pg.click('#sheet [data-m="files"]'); await pg.waitForTimeout(200);
   await pg.screenshot({ path: P + '/w2-add.png' });
   await pg.setInputFiles('#fileIn', P + '/test40.mp3'); await pg.click('#addGo');
   await pg.waitForURL(/#\/item\/\d+/, { timeout: 30000 }); await pg.waitForTimeout(2000);
@@ -47,6 +47,20 @@ const P = process.argv[2], URL0 = process.argv[3] || 'https://beaconcrest8.githu
   await pg.screenshot({ path: P + '/w4-done.png', fullPage: false });
   // reload: data must still be there
   await pg.reload(); await pg.waitForSelector('#boot', { state: 'detached', timeout: 120000 }); await pg.waitForTimeout(2000);
+  // a real YouTube link through the free mirrors (they come and go, so this is reported, not required)
+  try {
+    await ctx.unroute('https://api.groq.com/**');
+    const yt = await pg.evaluate(async () => (await fetch('api/links', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: 'https://www.youtube.com/watch?v=jNQXAC9IVRw', mode: 'audio' }) })).json());
+    let last = '';
+    for (let i = 0; i < 90; i++) {
+      const js = await pg.evaluate(async () => (await fetch('api/jobs')).json());
+      const mine = js.filter(j => j.item_id === yt.ids[0]); last = mine.map(j => `${j.kind}:${j.status}:${(j.message || '').slice(0, 60)}`).join(' | ');
+      if (mine.length && mine.every(j => ['done', 'error'].includes(j.status)) && (mine.some(j => j.kind === 'fetch') || mine.some(j => j.status === 'error'))) break;
+      await pg.waitForTimeout(3000);
+    }
+    const it = await pg.evaluate(async id => (await fetch('api/items/' + id)).json(), yt.ids[0]);
+    console.log('YOUTUBE (mirrors):', last, '→', it.title, it.duration, it.file || '(no file)');
+  } catch (e) { console.log('YOUTUBE (mirrors): failed', e.message); }
   console.log('after reload items', (await pg.evaluate(async () => (await fetch('api/state')).json())).items?.length);
   await pg.goto(URL0 + '#/settings'); await pg.waitForTimeout(2500); await pg.screenshot({ path: P + '/w5-settings.png', fullPage: true });
   for (const [w, h] of [[1366, 768], [1920, 1080]]) { await pg.setViewportSize({ width: w, height: h }); await pg.goto(URL0 + '#/item/' + id); await pg.waitForTimeout(2500); await pg.screenshot({ path: `${P}/w6-${w}.png` }); }

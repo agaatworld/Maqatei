@@ -20,9 +20,10 @@ from urllib.parse import parse_qs, unquote, urlparse
 if "requests" not in sys.modules:              # the real one needs sockets; the page makes web calls instead
     sys.modules["requests"] = types.SimpleNamespace(RequestException=Exception)
 
-from . import db, jobs, main, media, transcribe
+from . import db, jobs, main, media, mirrors, transcribe
 
 MEMO = {}                 # answers the page gave back: key -> result
+_DONE = {}                # finished downloads of the running task
 _probe = {}               # length and kind of a file being added (the page measures it before sending it)
 
 
@@ -53,6 +54,12 @@ def _ffmpeg(cmd):
     return MEMO[k]
 
 
+# yt-dlp cannot run in a browser. Its calls "fail" with the message the engine treats as YouTube blocking it,
+# so the engine goes straight to its free YouTube mirrors (which a browser can reach).
+NO_YTDLP = "ERROR: Sign in to confirm you're not a bot (no yt-dlp in the browser)"
+_is_ffmpeg = lambda cmd: str(cmd[0]).endswith("ffmpeg")
+
+
 class _Subprocess:
     """Stands in for the subprocess module inside media.py."""
     PIPE = STDOUT = DEVNULL = None
@@ -62,12 +69,12 @@ class _Subprocess:
 
     @staticmethod
     def run(cmd, **kw):
-        code, log = _ffmpeg(cmd)
+        code, log = _ffmpeg(cmd) if _is_ffmpeg(cmd) else (1, NO_YTDLP)
         return _Done(code, log)
 
     class Popen:
         def __init__(self, cmd, **kw):
-            self.returncode, log = _ffmpeg(cmd)
+            self.returncode, log = _ffmpeg(cmd) if _is_ffmpeg(cmd) else (1, NO_YTDLP)
             self.stdout = io.StringIO(log)
 
         def wait(self, timeout=None):
@@ -119,6 +126,12 @@ class _Executor:
             f.set_exception(e)
         return f
 
+    def map(self, fn, it):
+        return [fn(x) for x in it]
+
+    def shutdown(self, *a, **kw):
+        pass
+
 
 # ---------- the transcription service, called by the page ----------
 class _Resp:
@@ -134,27 +147,54 @@ class _Requests:
         pass
 
     @staticmethod
-    def post(url, headers=None, files=None, data=None, timeout=None):
-        name, fobj, mime = files["file"]
+    def post(url, headers=None, files=None, data=None, json=None, timeout=None):
+        name, fobj, mime = files["file"] if files else (None, None, None)
         path = getattr(fobj, "name", None)
         items = list(data.items()) if isinstance(data, dict) else list(data or [])
-        return _Requests._ask("POST", url, headers, items, path, name, mime)
+        return _Requests._ask("POST", url, headers, items, path, name, mime, json)
 
     @staticmethod
     def get(url, headers=None, timeout=None, **kw):
-        return _Requests._ask("GET", url, headers, [], None, None, None)
+        return _Requests._ask("GET", url, headers, [], None, None, None, None)
 
     @staticmethod
-    def _ask(method, url, headers, items, path, name, mime):
-        k = _key("http", method, url, path, os.path.getsize(path) if path else 0, items)
+    def plan(method, url, headers=None, body=None):
+        """What the page must fetch for a request the engine will make later (see prefetch)."""
+        k = _key("http", method, url, None, 0, [], body)
+        return {"key": k, "method": method, "url": url, "headers": headers or {}, "data": [], "file": None, "name": None,
+                "mime": None, "json": body}
+
+    @staticmethod
+    def _ask(method, url, headers, items, path, name, mime, body):
+        k = _key("http", method, url, path, os.path.getsize(path) if path else 0, items, body)
         if k not in MEMO:
             raise NeedJS("http", {"key": k, "method": method, "url": url, "headers": headers or {}, "data": items,
-                                  "file": path, "name": name, "mime": mime})
-        # a success is kept (the task runs again from the top); anything else is used once, so it is asked again
-        st, text, hd = MEMO[k] if MEMO[k][0] == 200 else MEMO.pop(k)
+                                  "file": path, "name": name, "mime": mime, "json": body})
+        # the transcription service: a success is kept (the task runs again from the top), anything else is used
+        # once so the engine's own retry loop asks again. Other answers (the YouTube mirrors) are final either way.
+        st, text, hd = MEMO[k] if MEMO[k][0] == 200 or "groq.com" not in url else MEMO.pop(k)
         if st == 0:
             raise _Requests.RequestException(text)
         return _Resp(st, text, hd)
+
+
+def _plan(kind, base, vid):
+    """The request mirrors._one(kind, base, vid) will make, in the page's terms."""
+    if kind == "cobalt":
+        return _Requests.plan("POST", base.rstrip("/") + "/", {"Accept": "application/json", "Content-Type": "application/json"},
+                              {"url": f"https://www.youtube.com/watch?v={vid}", "videoQuality": "720", "youtubeVideoCodec": "h264"})
+    if kind == "piped":
+        return _Requests.plan("GET", f"{base}/streams/{vid}")
+    return _Requests.plan("GET", f"{base}/api/v1/videos/{vid}?local=true")
+
+
+def _lookup(vid, _real=mirrors.lookup):
+    """Ask every mirror at once: the page fetches them all in parallel, then the engine's own lookup reads the answers."""
+    plans = [_plan(k, b, vid) for k, b in mirrors.servers()]
+    todo = [p for p in plans if p["key"] not in MEMO]
+    if todo:
+        raise NeedJS("http_many", {"reqs": todo})
+    return _real(vid)
 
 
 def _setup():
@@ -162,6 +202,9 @@ def _setup():
     media.subprocess = _Subprocess
     media.threading = _Threading
     jobs.ThreadPoolExecutor = _Executor
+    mirrors.requests = _Requests
+    mirrors.ThreadPoolExecutor = _Executor
+    mirrors.lookup = _lookup
     transcribe.requests = _Requests
     transcribe._sleep = lambda *a, **kw: None     # the page itself waits before asking the service again
     real_probe = media.probe
@@ -171,6 +214,18 @@ def _setup():
             return _probe["dur"], _probe["kind"]
         return real_probe(path)
     media.probe = probe
+    real_dl = media.ytdlp_download
+
+    def ytdlp_download(url, out_template, want, height, cancel=None, progress=None, section=None):
+        """A finished download is remembered: the task runs again from the top, but the file moved only once."""
+        k = ("dl", url, str(out_template), want, height, section)
+        got = _DONE.get(k)
+        if got and got.exists():
+            return got
+        got = real_dl(url, out_template, want, height, cancel, progress, section)
+        _DONE[k] = got
+        return got
+    media.ytdlp_download = ytdlp_download
     real_work = jobs.work
 
     def work(jid, fresh=False):              # a task runs again from the top: keep what ffmpeg already made
@@ -200,8 +255,8 @@ class _Headers(dict):
 
 
 RAW_PATHS = ("/api/upload", "/api/update/upload", "/api/cookies")
-OFF_HERE = {"/api/links": "روابط يوتيوب لا تعمل في نسخة الآيفون: أضف الدرس كملف من الآيفون. / Links don't work on iPhone: add the lesson as a file.",
-            "/api/update-downloader": "", "/api/lan": "", "/api/import-old": "", "/api/open-folder": "",
+ONLY_YT = "في نسخة الويب تعمل روابط يوتيوب فقط. لمواقع أخرى استخدم تطبيق الأندرويد أو الكمبيوتر، أو أضف الدرس كملف. / On the web version only YouTube links work; for other sites use the Android or desktop app, or add the lesson as a file."
+OFF_HERE = {"/api/update-downloader": "", "/api/lan": "", "/api/import-old": "", "/api/open-folder": "",
             "/api/test-mirrors": "", "/api/cookies": ""}
 
 
@@ -222,6 +277,10 @@ def dispatch(method, url, body=b"", dur=None, kind=None):
             if m == method and mt:
                 if method not in ("GET", "DELETE") and u.path not in RAW_PATHS:
                     r.body = json.loads(body) if body.strip() else {}
+                if u.path == "/api/links":
+                    urls = [x for x in (r.body.get("text") or "").split() if x.startswith(("http://", "https://"))]
+                    if any(not media.is_youtube(x) for x in urls):
+                        raise main.HTTPError(400, ONLY_YT)
                 if u.path == "/api/upload":
                     _probe.update(dur=float(dur or 0), kind=kind or "audio")
                 try:
@@ -254,7 +313,7 @@ def dispatch(method, url, body=b"", dur=None, kind=None):
 
 
 # ---------- tasks ----------
-SUPPORTED = ("clip", "convert", "transcribe", "project")
+SUPPORTED = ("clip", "convert", "transcribe", "project", "info", "fetch")
 
 
 def next_job():
@@ -264,7 +323,7 @@ def next_job():
         return run["id"]
     for j in db.q("SELECT * FROM jobs WHERE status='queued' ORDER BY id"):
         if j["kind"] not in SUPPORTED:
-            jobs.set_job(j["id"], status="error", message=OFF_HERE["/api/links"])
+            jobs.set_job(j["id"], status="error", message=ONLY_YT)
             continue
         jobs.set_job(j["id"], status="running", message="…")
         return j["id"]
@@ -285,10 +344,10 @@ def step(jid):
         return json.dumps(dict(n.payload, need=n.kind))
     cur = db.one("SELECT status, result, message FROM jobs WHERE id=?", (job["id"],))
     if cur and cur["status"] == "done":
-        MEMO.clear()
+        MEMO.clear(); _DONE.clear()
         return json.dumps({"done": cur["result"]})
     if cur and cur["status"] == "error":
-        MEMO.clear()
+        MEMO.clear(); _DONE.clear()
         return json.dumps({"error": cur["message"]})
     return json.dumps({"stop": cur["status"] if cur else "gone"})
 
@@ -297,3 +356,10 @@ def status(jid):
     """A task's state, so the page can stop ffmpeg or a wait when the task was paused or cancelled."""
     j = db.one("SELECT status FROM jobs WHERE id=?", (int(jid),))
     return j["status"] if j else "gone"
+
+
+def progress(jid, p, msg=None):
+    """Progress of a download the page is doing for a task (0..1)."""
+    j = db.one("SELECT status FROM jobs WHERE id=?", (int(jid),))
+    if j and j["status"] == "running":
+        jobs.set_job(int(jid), progress=round(max(0.0, min(1.0, float(p))), 4), **({"message": msg} if msg else {}))

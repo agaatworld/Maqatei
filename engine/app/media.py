@@ -19,6 +19,8 @@ APK = os.environ.get("MAQATI_APK") == "1"
 PYTHON = os.environ.get("MAQATI_PYTHON") or sys.executable
 YTDLP = os.environ.get("MAQATI_YTDLP")          # the yt-dlp program file (a zip Python runs directly)
 QJS = os.environ.get("MAQATI_QJS")              # QuickJS, the JavaScript helper YouTube needs
+YTDLP_EXE = os.environ.get("MAQATI_YTDLP_EXE")  # the desktop app: a stand-alone yt-dlp program
+DENO = os.environ.get("MAQATI_DENO")            # the desktop app: Deno, the JavaScript helper YouTube needs
 
 
 def M(key, **kw):
@@ -277,7 +279,7 @@ def best_cut(near, pauses, reach):
 
 # ---------- yt-dlp ----------
 # YouTube needs a JavaScript runtime: Deno on PC (installed by pip), Node.js on Android (Termux)
-JS_RUNTIME = "quickjs" if QJS else ("deno" if shutil.which("deno") else ("node" if shutil.which("node") else None))
+JS_RUNTIME = "quickjs" if QJS else ("deno" if DENO or shutil.which("deno") else ("node" if shutil.which("node") else None))
 
 
 # When YouTube says "Sign in to confirm you're not a bot", other YouTube apps' ways in often still work.
@@ -312,12 +314,14 @@ def blocked_message():
 
 
 def ytdlp_base(alt=0):
-    cmd = ([PYTHON, YTDLP] if YTDLP else [sys.executable, "-m", "yt_dlp"]) + ["--encoding", "utf-8", "--no-playlist", "--newline", "--no-colors",
+    cmd = ([YTDLP_EXE] if YTDLP_EXE else [PYTHON, YTDLP] if YTDLP else [sys.executable, "-m", "yt_dlp"]) + ["--encoding", "utf-8", "--no-playlist", "--newline", "--no-colors",
            "--no-mtime", "--retries", "10", "--fragment-retries", "10"]
     if FFMPEG:
         cmd += ["--ffmpeg-location", FFMPEG]
     if JS_RUNTIME == "node":
         cmd += ["--js-runtimes", "node"]
+    elif JS_RUNTIME == "deno" and DENO:
+        cmd += ["--js-runtimes", f"deno:{DENO}"]
     elif JS_RUNTIME == "quickjs":
         cmd += ["--js-runtimes", f"quickjs:{QJS}"]
     ck = cookies_file()
@@ -328,6 +332,12 @@ def ytdlp_base(alt=0):
 
 def ytdlp_version():
     """The version of the yt-dlp in use (read from the file, so an update shows at once)."""
+    if YTDLP_EXE:
+        try:
+            out = subprocess.run([YTDLP_EXE, "--version"], capture_output=True, text=True, timeout=60, creationflags=NO_WINDOW)
+            return (out.stdout.strip().splitlines() or [None])[0]
+        except Exception:
+            return None
     if YTDLP:
         try:
             import zipfile
@@ -355,6 +365,21 @@ def update_ytdlp(state=None):
     if state.get("running"):
         return False
     state.update(running=True, msg="Updating…")
+    if YTDLP_EXE:                                  # the desktop app: yt-dlp updates itself
+        try:
+            old = ytdlp_version()
+            out = subprocess.run([YTDLP_EXE, "-U"], capture_output=True, text=True, timeout=300, creationflags=NO_WINDOW)
+            if out.returncode != 0:
+                raise RuntimeError((out.stderr or out.stdout)[-200:])
+            new = ytdlp_version()
+            state.update(running=False, msg=f"yt-dlp {new}" + ("" if new != old else " ✓"), checked=time.time())
+            return True
+        except Exception as e:
+            state.update(running=False, msg=f"Update failed: {e}"[:220])
+            return False
+    if not YTDLP:
+        state.update(running=False, msg="")
+        return False
     tmp = Path(YTDLP + ".new")
     try:
         old = ytdlp_version()

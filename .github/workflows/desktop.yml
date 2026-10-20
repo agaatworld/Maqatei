@@ -1,0 +1,59 @@
+# The Windows and Mac apps: PyInstaller packs the engine with Python, ffmpeg, yt-dlp and Deno into one program.
+name: Desktop apps
+on:
+  push:
+    branches: [main]
+    paths: ["engine/**", "desktop/**", ".github/workflows/desktop.yml"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, name: windows, ytdlp: yt-dlp.exe, deno: deno-x86_64-pc-windows-msvc.zip }
+          - { os: macos-latest, name: mac-apple-silicon, ytdlp: yt-dlp_macos, deno: deno-aarch64-apple-darwin.zip }
+          - { os: macos-13, name: mac-intel, ytdlp: yt-dlp_macos, deno: deno-x86_64-apple-darwin.zip }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -q pyinstaller==6.11.1 pywebview==5.4 requests imageio-ffmpeg==0.6.0 pillow
+      - name: Fetch yt-dlp and Deno
+        shell: bash
+        run: |
+          mkdir -p desktop/bin
+          curl -sL -o "desktop/bin/${{ matrix.ytdlp == 'yt-dlp.exe' && 'yt-dlp.exe' || 'yt-dlp' }}" "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${{ matrix.ytdlp }}"
+          curl -sL -o deno.zip "https://github.com/denoland/deno/releases/latest/download/${{ matrix.deno }}"
+          unzip -q -o deno.zip -d desktop/bin && rm deno.zip
+          chmod +x desktop/bin/* || true
+          ls -la desktop/bin
+      - name: Build
+        shell: bash
+        run: |
+          V=$(python -c "exec(open('engine/app/version.py').read()); print(VERSION)"); echo "VERSION=$V" >> $GITHUB_ENV
+          SEP=":"; [ "${{ runner.os }}" = "Windows" ] && SEP=";"
+          pyinstaller --noconfirm --clean --onefile --windowed --name Maqati --icon engine/app/static/icon-512.png \
+            --paths engine --paths engine/vendor --collect-submodules app --collect-submodules qrcode --collect-all imageio_ffmpeg \
+            --add-data "engine/app/static${SEP}app/static" --add-binary "desktop/bin/*${SEP}bin" desktop/maqati_desktop.py
+          ls -la dist
+      - name: Pack
+        shell: bash
+        run: |
+          mkdir -p out
+          if [ "${{ runner.os }}" = "Windows" ]; then cp dist/Maqati.exe "out/Maqati-$VERSION-windows.exe";
+          else ditto -c -k --keepParent dist/Maqati.app "out/Maqati-$VERSION-${{ matrix.name }}.zip"; fi
+          ls -la out
+      - uses: actions/upload-artifact@v4
+        with: { name: "desktop-${{ matrix.name }}", path: out/* }
+      - name: Add to the version's release (waits for the Android build to create it)
+        shell: bash
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          for i in $(seq 1 60); do gh release view "v$VERSION" >/dev/null 2>&1 && break; sleep 30; done
+          gh release view "v$VERSION" >/dev/null 2>&1 || gh release create "v$VERSION" --target "${{ github.sha }}" --title "مقاطع $VERSION" --notes "$(python tests/release_notes.py "$VERSION")"
+          gh release upload "v$VERSION" out/* --clobber

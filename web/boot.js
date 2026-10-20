@@ -143,6 +143,12 @@ from app import webapi
 
   async function need(n, jid) {
     let res;
+    console.debug('need', n.need, n.url || (n.reqs ? n.reqs.length + ' mirrors' : (n.cmd || []).slice(-1)[0]), new Date().toISOString().slice(11, 19));
+    if (n.need === 'http_many') {                        // the YouTube mirrors: all asked at the same time
+      const rs = await Promise.all(n.reqs.map(q => runHTTP(q, jid, true)));
+      rs.forEach((r, i) => eng.provide(n.reqs[i].key, JSON.stringify(r)));
+      return;
+    }
     if (n.need === 'ffmpeg') res = await runFF(n.cmd, jid);
     else if (n.need === 'http') res = await runHTTP(n, jid);
     else res = [1, 'unknown'];
@@ -159,12 +165,42 @@ from app import webapi
     return ff;
   }
   let ffLog = [];
+  /* a media address on the internet (a YouTube mirror): fetched once into ffmpeg's own files */
+  async function fetchIn(url, jid) {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const total = +r.headers.get('content-length') || 0, parts = []; let got = 0;
+    const rd = r.body.getReader();
+    for (;;) {
+      const { value, done } = await rd.read(); if (done) break;
+      parts.push(value); got += value.length;
+      if (jid != null && total && got % (1 << 20) < value.length) { try { eng.progress(jid, Math.min(0.97, got / total)); } catch (e) {} }
+    }
+    const out = new Uint8Array(got); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
+    return out;
+  }
+  const NETFLAGS = new Set(['-reconnect', '-reconnect_streamed', '-reconnect_on_network_error', '-reconnect_delay_max', '-rw_timeout', '-headers']);
   async function runFF(cmd, jid) {
     const f = await loadFF();
-    const args = cmd.slice(1), outs = [], used = new Set();
+    let args = cmd.slice(1); const outs = [], used = new Set();
     let k = 0;
+    const clean = [];                                      // ffmpeg.wasm has no network: the net flags go, the addresses are fetched here
+    for (let i = 0; i < args.length; i++) { if (NETFLAGS.has(args[i])) { i++; continue; } clean.push(args[i]); }
+    args = clean;
     for (let i = 0; i < args.length; i++) {
       const a = args[i];
+      if (/^https?:\/\//.test(a) && args[i - 1] === '-i') {
+        const tag = 'url:' + a;
+        let name = ffIn[tag];
+        if (!name) {
+          const m = /\.(m4a|mp4|webm|mp3|opus|ogg|aac)(?=$|[?&])/i.exec(a.split('#')[0]);
+          name = 'in' + (Date.now() % 1e9) + '_' + (k++) + '.' + (m ? m[1].toLowerCase() : (/audio|itag=1[34]\d|mime=audio/.test(a) ? 'm4a' : 'mp4'));
+          const data = await fetchIn(a, jid);
+          await f.writeFile(name, data); ffIn[tag] = name;
+        }
+        used.add(name); args[i] = name;
+        continue;
+      }
       if (!a.startsWith(ROOT + '/')) continue;
       const ext = (a.match(/\.\w{1,5}$/) || [''])[0];
       let st = null;
@@ -194,11 +230,14 @@ from app import webapi
   }
 
   /* the transcription service (Groq allows calls straight from a web page) */
-  async function runHTTP(n, jid) {
+  async function runHTTP(n, jid, quick) {
     let st = 0, text = '', hd = {};
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), quick ? 9000 : 300000);
     try {
-      const o = { method: n.method, headers: n.headers };
-      if (n.method === 'POST') {
+      const headers = { ...n.headers }; delete headers['User-Agent'];
+      const o = { method: n.method, headers, signal: ac.signal };
+      if (n.method === 'POST' && n.json) o.body = JSON.stringify(n.json);
+      else if (n.method === 'POST') {
         const fd = new FormData();
         for (const [key, v] of n.data) fd.append(key, v);
         if (n.file) fd.append('file', new Blob([FS.readFile(n.file)], { type: n.mime }), n.name);
@@ -207,7 +246,9 @@ from app import webapi
       const r = await fetch(n.url, o);
       st = r.status; text = await r.text(); r.headers.forEach((v, key) => hd[key] = v);
     } catch (e) { st = 0; text = String(e && e.message || e); }
-    if (st === 429 || st === 0 || st >= 500) {           // wait before the engine asks again (as the normal app does)
+    clearTimeout(tm);
+    if (quick) return [st, text, hd];
+    if (/groq\.com/.test(n.url) && (st === 429 || st === 0 || st >= 500)) {   // wait before the engine asks the service again
       let wait = st === 429 ? Math.min(900, Math.max(3, +hd['retry-after'] || 30)) : 8;
       while (wait-- > 0) { if (jid != null && eng.status(jid) !== 'running') break; await sleep(1000); }
     }

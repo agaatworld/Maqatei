@@ -21,8 +21,14 @@ The full product brief is in `docs/REBUILD-BRIEF.md`. Read sections 4 (features 
 - Sources: `web/` (boot.js, sw.js, boot.html, build.py). `python3 web/build.py` writes `open/` (committed; GitHub
   Pages publishes main). The web workflow rebuilds `open/` if it is stale. **`app/` is the Android project — never
   write build output there.**
-- No YouTube links on the web version (browsers can't). `tests/web/live.js` + `web-check.yml` (run it by hand:
+- YouTube links on the web version go through the free mirrors (`mirrors.py`; the page fetches them all at once via
+  `http_many`, ffmpeg.wasm gets the stream downloaded by the page). Other sites: not on the web. `tests/web/live.js` + `web-check.yml` (run it by hand:
   workflow_dispatch) use the live site and put screenshots in the `web-check` pre-release.
+
+## Desktop app (Windows / Mac)
+- `desktop/maqati_desktop.py` + `.github/workflows/desktop.yml`: PyInstaller one-file, pywebview window, imageio-ffmpeg,
+  yt-dlp and Deno copied to `~/Maqati/.maqati/bin` on first run (so yt-dlp -U persists). Env `MAQATI_DESKTOP=1`,
+  `MAQATI_YTDLP_EXE`, `MAQATI_DENO`. Uploaded to the version's GitHub release as Maqati-<v>-windows.exe / -mac-*.zip.
 
 ## Design rules from the owner
 - **No eight-pointed stars or Islamic geometric motifs** anywhere (icons, patterns, backgrounds). He has refused them more than once.

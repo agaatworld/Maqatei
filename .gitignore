@@ -12,3 +12,9 @@ dist/
 site/
 web/.cache/
 apk/
+
+# desktop app build
+desktop/bin/
+build/
+dist/
+*.spec
