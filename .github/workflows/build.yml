@@ -28,6 +28,10 @@ jobs:
         run: |
           set -o pipefail
           python tests/test_transcribe_pipeline.py 2>&1 | tee engine-tests.log
+      - name: All main features (cuts, lock, transcripts, search, notes, projects, export, tasks, Wi-Fi)
+        run: |
+          set -o pipefail
+          python tests/test_regression.py 2>&1 | tee -a engine-tests.log
       - name: Share the test log on the ci-latest pre-release
         if: failure()
         env:

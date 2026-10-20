@@ -495,7 +495,7 @@ function ui() {
   const it = PL.item, onPage = it && S.item && S.item.id === it.id && /^#\/item\//.test(location.hash);
   const mini = $('#mini'), dock = $('#dock');
   mini.hidden = !it || onPage; dock.hidden = !onPage;
-  document.documentElement.style.setProperty('--dock', onPage ? 'var(--dockh)' : it ? (plLesson() ? 'var(--minih2)' : 'var(--minih)') : '0px');
+  document.documentElement.style.setProperty('--dock', onPage ? 'var(--dockh)' : it ? 'var(--minih)' : '0px');
   if (!mini.hidden && mini.dataset.for !== String(it.id) + '|' + it.title) {
     mini.dataset.for = String(it.id) + '|' + it.title;
     mini.innerHTML = `<div class="pcard">${seekHTML('miniSeek')}
@@ -503,7 +503,7 @@ function ui() {
       <button class="mtitle" data-act="go-playing"><b dir="auto">${esc(nice(it.title))}</b><small id="miniTime" dir="ltr">0:00</small></button>
       <div class="ctl"><button class="ib" data-act="skip" data-s="-1">${IC.back}<em class="skn">${skipS()}</em></button><button class="ib play" data-act="pp" id="miniPP">${IC.play}</button>
       <button class="ib" data-act="skip" data-s="1">${IC.fwd}<em class="skn">${skipS()}</em></button></div><button class="ib x" data-act="pl-close">${IC.x}</button></div>
-      ${plLesson() ? `<div class="mrow"><button class="mk main" data-act="bm">${IC.bm}<span>${t('bookmark')}</span></button>
+      ${false && plLesson() ? `<div class="mrow"><button class="mk main" data-act="bm">${IC.bm}<span>${t('bookmark')}</span></button>
         <button class="mk st" data-act="mstart" >${IC.start}<span>${t('start_btn')}</span></button>
         <button class="mk en" data-act="mend">${IC.end}<span>${t('end_btn')}</span></button></div>` : ''}</div>`;
     bindSeek($('#miniSeek'));
