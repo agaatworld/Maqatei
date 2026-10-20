@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+  pages: write
 concurrency: { group: web, cancel-in-progress: true }
 jobs:
   web:
@@ -24,3 +25,10 @@ jobs:
           git config user.name "maqati-bot"; git config user.email "maqati-bot@users.noreply.github.com"
           git add -A && git commit -qm "web ${GITHUB_SHA::7}"
           git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages
+      - name: Point GitHub Pages at the web version
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh api repos/${{ github.repository }}/pages --jq '.source' || true
+          gh api -X PUT repos/${{ github.repository }}/pages -f "source[branch]=gh-pages" -f "source[path]=/" \
+            || gh api -X POST repos/${{ github.repository }}/pages -f "source[branch]=gh-pages" -f "source[path]=/" || true
+          gh api repos/${{ github.repository }}/pages --jq '.source, .html_url' || true
