@@ -12,6 +12,15 @@ No Termux, no commands.
 4. While something runs, a Maqati notification shows the progress. It keeps working with the screen off; unfinished work continues after a restart.
 5. From YouTube: **Share → Maqati** adds the lesson to your library.
 
+## Open from an iPhone or another device
+
+1. In Maqati on your phone: **Settings → Open from an iPhone or another device**, and switch it on.
+2. Both on the same Wi-Fi. On the iPhone open the Camera, point it at the square and tap the link.
+3. Type the 6-digit code (once).
+4. In Safari: **Share → Add to Home Screen**.
+
+**Light and dark:** the moon/sun button at the top switches with one tap.
+
 ## 2. Library and folders
 
 ![Library](library.jpg)

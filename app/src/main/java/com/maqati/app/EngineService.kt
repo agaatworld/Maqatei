@@ -78,6 +78,8 @@ class EngineService : Service() {
             }
             val w = Engine.work()
             val busy = w != null && (w.active > 0 || w.queued > 0)
+            // another device (an iPhone) may be using Maqati over the Wi-Fi: keep serving it
+            val lanOn = Engine.get("/api/lan")?.contains("\"on\": true") == true
             getSharedPreferences("maqati", MODE_PRIVATE).edit().putBoolean("has_work", busy).apply()
             if (busy) {
                 idleSince = System.currentTimeMillis()
@@ -85,6 +87,10 @@ class EngineService : Service() {
                 val pct = w!!.progress?.takeIf { !it.isNaN() }?.let { (it * 100).toInt().coerceIn(0, 100) }
                 val more = if (w.active + w.queued > 1) " · ${w.active + w.queued} مهام" else ""
                 update((w.title ?: "مقاطع يعمل") + more, w.message ?: "يعمل…", pct)
+            } else if (lanOn) {
+                idleSince = System.currentTimeMillis()
+                holdLocks(true)
+                update("مقاطع مفتوح للأجهزة على الواي فاي", "يمكن فتحه من الآيفون الآن. أوقفه من الإعدادات.", null)
             } else {
                 holdLocks(false)
                 update("مقاطع جاهز", "لا توجد مهام الآن", null)

@@ -130,6 +130,14 @@ const TX = {
   locked_msg: ['Done & locked — tap ✓ on the part to unlock', 'مُنجز ومقفل — اضغط ✓ عند المقطع لفتحه'],
   tr_choose: ['Choose a transcript', 'اختر التفريغ'], tr_showing: ['Showing', 'المعروض'],
   pin: ['Pin', 'تثبيت'], pinned: ['Pinned', 'مثبّت'], working_on: ['Working on now', 'قيد العمل الآن'],
+  continue: ['Continue listening', 'أكمل الاستماع'],
+  lan_t: ['Open from an iPhone or another device', 'فتح من الآيفون أو جهاز آخر'],
+  lan_p: ['Use Maqati from an iPhone, tablet or computer on the same Wi-Fi. Everything works, downloads too: this phone does the work.', 'استعمل «مقاطع» من آيفون أو تابلت أو كمبيوتر على نفس شبكة الواي فاي. كل شيء يعمل حتى التحميل: هذا الهاتف يقوم بالعمل.'],
+  lan_sw: ['Allow devices on my Wi-Fi', 'السماح للأجهزة على شبكتي'],
+  lan_code: ['Code (type it once on the other device)', 'الرمز (يُكتب مرة واحدة في الجهاز الآخر)'],
+  lan_new: ['New code', 'رمز جديد'],
+  lan_nowifi: ['Connect this phone to Wi-Fi first.', 'وصّل هذا الهاتف بالواي فاي أولًا.'],
+  lan_steps: ['Both devices on the same Wi-Fi.|On the iPhone open the Camera and point it at the code above, then tap the link (or type the address in Safari).|Type the code.|In Safari tap Share, then “Add to Home Screen”: Maqati gets its own icon.|Keep this phone on and Maqati running.', 'الجهازان على نفس شبكة الواي فاي.|في الآيفون افتح الكاميرا ووجّهها إلى المربع أعلاه ثم اضغط الرابط (أو اكتب العنوان في Safari).|اكتب الرمز.|في Safari اضغط «مشاركة» ثم «إضافة إلى الشاشة الرئيسية»: يصير لـ«مقاطع» أيقونة.|اترك هذا الهاتف مشغّلًا و«مقاطع» يعمل.'], play: ['Play', 'تشغيل'], settings_btn: ['Settings', 'الإعدادات'],
   tab_works: ['Works', 'الأعمال'], works_p: ['Everything made in this folder is gathered here automatically — tap any one to use it.', 'كل ما عُمل في هذا المجلد يُجمع هنا تلقائيًّا — اضغط أيّها لتعمل عليه.'],
   w_all: ['All', 'الكل'], w_tr: ['Transcripts', 'تفريغات'], w_audio: ['Audio', 'صوتيات'], w_video: ['Video', 'مرئيات'], works_empty: ['Nothing made here yet', 'لا توجد أعمال هنا بعد'],
   exp_font: ['Font', 'الخط'], exp_hfont: ['Headings font', 'خط العناوين'], edit_paras: ['Paragraphs: names & times', 'الفقرات: الأسماء والتوقيت'],
@@ -239,16 +247,23 @@ function applyLook() {
   const r = document.documentElement, s = S.set;
   r.lang = LANG; r.dir = LANG === 'ar' ? 'rtl' : 'ltr';
   r.dataset.theme = s.theme || 'auto';
-  if (!COLORS.includes(s.accent)) s.accent = '#0d6e5f';
+  if (OLD_COLORS[s.accent]) s.accent = OLD_COLORS[s.accent];
+  if (!COLORS.includes(s.accent)) s.accent = COLORS[0];
+  const dark = s.theme === 'dark' || (s.theme !== 'light' && s.theme !== 'sepia' && matchMedia('(prefers-color-scheme: dark)').matches);
+  r.classList.toggle('isdark', dark);
   const fu = FONTS[s.font_ui] || FONTS.tajawal, fh = FONTS[s.font_head] || fu;
   r.style.setProperty('--ui', fstack(s.font_ui)); r.style.setProperty('--head', fstack(s.font_head || s.font_ui)); r.style.setProperty('--read', fstack(s.font_read || 'amiri'));
   r.style.setProperty('--wb', fu[3]); r.style.setProperty('--wn', fu[5]); r.style.setProperty('--wh', fh[4]);
-  r.style.setProperty('--acc', s.accent || '#0d6e5f');
+  // on a dark background the same colour is lifted, so text and icons in it stay easy to read
+  r.style.setProperty('--acc', dark ? `color-mix(in srgb, ${s.accent} 55%, #ffffff)` : s.accent);
+  r.style.setProperty('--acc-ink', dark ? '#0E1513' : '#ffffff');
+  r.style.setProperty('--acc-deep', `color-mix(in srgb, ${s.accent} ${dark ? 62 : 82}%, #061412)`);   // solid fills with white text
   r.style.setProperty('--scale', s.font_scale || 1);
   r.style.setProperty('--trs', s.tr_scale || 1);
-  $('meta[name=theme-color]').content = s.accent || '#0d6e5f';
+  $('meta[name=theme-color]').content = dark ? '#0E1513' : '#F6F3EC';
+  const tb = $('#themeBtn'); if (tb) { tb.innerHTML = ICON(dark ? 'sun' : 'moon'); tb.setAttribute('aria-label', t(dark ? 'light' : 'dark')); }
   document.title = t('app'); $('#appName').textContent = t('app'); $('#appSub').textContent = t('tagline');
-  $('#backBtn').textContent = LANG === 'ar' ? '→' : '←';
+  $('#backBtn').innerHTML = ICON(LANG === 'ar' ? 'chevR' : 'chevL');
   renderTabs();
 }
 async function loadLib() { const st = await api('/api/state'); S.folders = st.folders; S.items = st.items; }
@@ -265,17 +280,26 @@ async function route() {
   S.pick = null;
   const hit = ROUTES.find(([rx]) => rx.test(h));
   if (!hit) { location.hash = '#/lib'; return; }
+  const v = view(); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
+  clearTimeout(route.t); route.t = setTimeout(() => v.classList.remove('enter'), 900);
   await hit[1](h.match(hit[0]));
   $('#backBtn').hidden = !/^#\/(lib\/f|item|project\/|help|search)/.test(h);
   renderTabs(); PL.place();
 }
 window.addEventListener('hashchange', () => { route().then(() => window.scrollTo(0, 0)); });
+window.addEventListener('scroll', () => $('.top').classList.toggle('scrolled', window.scrollY > 4), { passive: true });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (S.set.theme === 'auto' || !S.set.theme) applyLook(); });
 function renderTabs() {
   const h = location.hash || '#/lib';
-  const on = /^#\/(lib|item)/.test(h) ? 'lib' : /^#\/project/.test(h) ? 'projects' : /^#\/tasks/.test(h) ? 'tasks' : /^#\/(settings|help)/.test(h) ? 'settings' : '';
+  const on = /^#\/(lib|item)/.test(h) ? 'lib' : /^#\/search/.test(h) ? 'search' : /^#\/project/.test(h) ? 'projects' : /^#\/tasks/.test(h) ? 'tasks' : '';
   const active = S.jobs.filter(j => j.status === 'running' || j.status === 'queued').length;
-  $('#tabbar').innerHTML = [['lib', '📚', 'library'], ['projects', '💼', 'projects'], ['tasks', '⏳', 'tasks'], ['settings', '⚙️', 'settings']].map(([k, i, n]) =>
-    `<a href="#/${k}" class="${on === k ? 'on' : ''}"><i>${i}</i><span>${t(n)}</span>${k === 'tasks' && active ? `<span class="badge">${active}</span>` : ''}</a>`).join('');
+  const tab = ([k, i, n]) => `<a href="#/${k}" class="${on === k ? 'on' : ''}"><i>${ICON(i)}</i><span>${t(n)}</span>${k === 'tasks' && active ? `<span class="badge">${active}</span>` : ''}</a>`;
+  const sig = on + '|' + active + '|' + LANG;
+  if ($('#tabbar').dataset.sig === sig) return;
+  $('#tabbar').dataset.sig = sig;
+  $('#tabbar').innerHTML = [['lib', 'library', 'library'], ['search', 'search', 'search']].map(tab).join('')
+    + `<button class="tadd" data-act="add" aria-label="${t('add')}">${ICON('plus')}</button>`
+    + [['projects', 'case', 'projects'], ['tasks', 'clock', 'tasks']].map(tab).join('');
 }
 const view = () => $('#view');
 
@@ -294,6 +318,7 @@ const PL = {
   rate(r) { this.rateV = r; if (this.yp) this.yp.setPlaybackRate(r); else if (this.el) this.el.playbackRate = r; },
   isVideoFile(item) { return item && item.file && item.media === 'video'; },
   load(item, at, autoplay) {
+    if (item && /^\d+$/.test(String(item.id))) store.set('last', item.id);
     if (this.item && this.item.id === item.id && this.item.file === item.file && this.ready()) {
       this.item = item; if (at != null) this.seek(at, true); return;
     }
@@ -543,14 +568,26 @@ function folderCard(id, name, icon, color, n) {
   return `<a class="fcard" href="#/lib/f/${id}" style="--fc:${esc(color || 'var(--acc)')}"><div class="fi">${esc(icon)}</div><b dir="auto">${esc(name)}</b><small>${t('items_n', n)}</small></a>`;
 }
 const fabHTML = () => `<button class="fab" data-act="add"><b>＋</b> ${t('add')}</button>`;
+function heroCard() {
+  const pinned = S.items.filter(i => i.pinned).sort((a, b) => b.pinned - a.pinned)[0];
+  const it = pinned || S.items.find(i => i.id === store.get('last', null));
+  if (!it) return '';
+  const pos = store.get('pos.' + it.id, 0), d = it.duration || 0, left = d && pos ? Math.max(0, d - pos) : 0;
+  const folder = S.folders.find(f => f.id === it.folder_id);
+  return `<a class="hero" href="#/item/${it.id}">
+    <div class="k"><span>${ICON(pinned ? 'pin' : 'headphones')} ${t(pinned ? 'working_on' : 'continue')}</span><span>${left ? t('left', fmt(left)) : d ? fmt(d) : ''}</span></div>
+    <div class="r"><div><b dir="auto">${esc(nice(it.title))}</b><small>${folder ? `<span dir="auto">${esc(folder.name)}</span> · ` : ''}${d ? fmt(d) : ''}</small></div>
+      <button class="go" data-act="play-at" data-item="${it.id}" data-t="${pos || 0}" aria-label="${t('play')}">${ICON('play')}</button></div>
+    ${d ? `<div class="pb"><i style="width:${Math.min(100, Math.round(pos / d * 100))}%"></i></div>` : ''}</a>`;
+}
 async function vLibrary() {
   await loadLib();
   const n = f => S.items.filter(i => f === 'all' ? true : f === 'none' ? !i.folder_id : i.folder_id === f).length;
-  view().innerHTML = `
+  view().innerHTML = `${heroCard()}
     <div class="h"><h2>${t('library')}</h2><div class="grow"></div>
       <div class="segc viewsw"><button type="button" data-act="lib-view" data-v="grid" class="${store.get('libView', 'grid') === 'grid' ? 'on' : ''}" aria-label="grid">▦</button><button type="button" data-act="lib-view" data-v="list" class="${store.get('libView', 'grid') === 'list' ? 'on' : ''}" aria-label="list">☰</button></div>
       <a class="btn soft" href="#/search">🔎 ${t('search')}</a></div>
-    ${S.items.some(i => i.pinned) ? `<div class="sectitle">📍 ${t('working_on')}</div><div class="list pinlist">${S.items.filter(i => i.pinned).sort((a, b) => b.pinned - a.pinned).map(itemRow).join('')}</div>` : ''}
+    ${S.items.filter(i => i.pinned).length > 1 ? `<div class="sectitle">📍 ${t('working_on')}</div><div class="list pinlist">${S.items.filter(i => i.pinned).sort((a, b) => b.pinned - a.pinned).slice(1).map(itemRow).join('')}</div>` : ''}
     <div class="folders ${store.get('libView', 'grid') === 'list' ? 'aslist' : ''}">
       ${folderCard('all', t('all_items'), '🗂️', '#5b6b73', n('all'))}
       ${folderCard('none', t('unsorted'), '📄', '#8a7a5c', n('none'))}
@@ -676,7 +713,8 @@ function exCard(x, jobs, showItem) {
       <button class="btn ghost" data-act="ex-copy">📋</button><button class="btn ghost danger" data-act="ex-del">🗑</button></div></div>`;
 }
 
-const COLORS = ['#0d6e5f', '#1e3a5f', '#5b6b73', '#8a6d3b'];   // four calm colours
+const COLORS = ['#0F5C4D', '#1F4E79', '#4A5A66', '#8A6A2B'];   // four calm colours
+const OLD_COLORS = { '#0d6e5f': '#0F5C4D', '#1e3a5f': '#1F4E79', '#5b6b73': '#4A5A66', '#8a6d3b': '#8A6A2B' };
 const GONE = ['#8250df', '#bf3989'];
 const ICONS = ['📁', '📚', '🕌', '📖', '🎓', '🧠', '💡', '❤️', '⭐', '🌙', '☀️', '🌿', '🎧', '🎬', '📝', '🗂️', '💼', '🔖', '🏷️', '👨‍🏫', '🤲', '📿', '🕋', '✨'];
 async function customizeFolder(f) {
@@ -762,7 +800,7 @@ async function vItem(id, at) {
   view().innerHTML = `
     <div class="crumbs">${crumbFolder(d)}</div>
     <div class="itemgrid"><div class="col-play">
-      <div class="itemhead"><div class="titlebox"><h2 class="t" dir="auto" data-act="rename-item" id="itTitle">${esc(nice(d.title))} <span class="muted small">✏️</span></h2>
+      <div class="itemhead"><div class="titlebox"><h2 class="t" dir="auto" data-act="rename-item" id="itTitle">${esc(nice(d.title))} <span class="muted small noico">${ICON('pencil')}</span></h2>
         <div class="meta" id="itMeta"></div></div></div>
       <div id="banner"></div>
       <div class="player" id="player"></div>
@@ -800,7 +838,7 @@ async function refreshItem(opts = {}) {
   const srcChanged = d.file !== S.item.file;
   S.item = d;
   if (srcChanged && PL.item && PL.item.id === d.id) { const at = PL.time(), was = PL.playing(); PL.unload(); PL.load(d, at || null, was); if (d.file) toast(t('dl_done')); }
-  $('#itTitle').innerHTML = `${esc(nice(d.title))} <span class="muted small">✏️</span>`;
+  $('#itTitle').innerHTML = `${esc(nice(d.title))} <span class="muted small noico">${ICON('pencil')}</span>`;
   renderMeta(); renderBanner(); renderSections(opts); PL.place();
 }
 function secHTML(key, icon, title, n, body) {
@@ -1294,7 +1332,7 @@ async function vProject(id) {
   const j = p.jobs[0], secs = p.clips.reduce((a, c) => a + (c.end - c.start), 0);
   view().innerHTML = `
     <div class="crumbs"><a href="#/projects">${t('projects')}</a> ${SEP()}</div>
-    <div class="itemhead"><div class="titlebox"><h2 class="t" dir="auto" data-act="rename-project">${esc(p.name)} <span class="muted small">✏️</span></h2></div></div>
+    <div class="itemhead"><div class="titlebox"><h2 class="t" dir="auto" data-act="rename-project">${esc(p.name)} <span class="muted small noico">${ICON('pencil')}</span></h2></div></div>
     <div class="field"><textarea class="input" dir="auto" data-edit="project-desc" placeholder="${t('desc_ph')}" style="min-height:64px">${esc(p.description || '')}</textarea></div>
     <div class="stat"><div><b>${p.items.length}</b><small>${t('tab_lessons')}</small></div><div><b>${p.clips.length}</b><small>${t('proj_clips')}</small></div><div><b><bdi>${fmt(secs)}</bdi></b><small>${t('total')}</small></div></div>
     <div class="card pad" style="margin:14px 0">
@@ -1490,6 +1528,8 @@ async function vSettings() {
         ${h.hosted ? '' : `<button class="btn" data-act="upd-ytdlp">⬇ ${t('upd_ytdlp')}</button>`}<input type="file" id="ckFile" accept=".txt,text/plain" hidden></div>
       <div class="btns" style="margin-top:10px"><button class="btn soft big wide" data-act="test-mirrors">🛰️ ${t('test_mirrors')}</button></div><div id="mirRes" style="margin-top:8px"></div>
       <p class="muted small">${t('ck_p')}</p></div>
+    ${h.hosted || IS_LAN ? '' : `<div class="card pad" id="lanCard"><h3>📱 ${t('lan_t')}</h3><p class="muted">${t('lan_p')}</p>
+      <label class="sw"><span>${t('lan_sw')}</span><input type="checkbox" id="lanSw"></label><div id="lanBox"></div></div>`}
     ${h.apk ? `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
       <p class="muted">${t('version')}: <b>${esc(h.version)}</b>${window.MaqatiApp ? ` · ${LANG === 'ar' ? 'التطبيق' : 'App'} <b dir="ltr">${esc(MaqatiApp.appVersion())}</b>` : ''}</p>
       <div class="btns"><button class="btn pri big" data-act="apk-update">🔍 ${t('upd_find')}</button></div>
@@ -1508,8 +1548,19 @@ async function vSettings() {
       <div>${ok(h.ffmpeg)} ffmpeg</div><div>${ok(h.ytdlp)} yt-dlp ${esc(h.ytdlp || '')}</div><div>${ok(h.js)} YouTube helper (${esc(h.js || '—')})</div>
       ${h.hosted ? '' : `<div class="muted small" style="margin-top:8px">${t('files_at')} <span dir="ltr" class="brk">${esc(h.library)}</span></div>`}</div></div>`;
   $('#gkey').onchange = e => saveSet({ groq_key: e.target.value.trim() }).then(() => { e.target.value = ''; vSettings(); });
+  if ($('#lanSw')) { lanShow(); $('#lanSw').onchange = async e => { e.target.disabled = true; try { lanShow(await post('/api/lan', { on: e.target.checked })); } catch (err) { toast('✗ ' + err.message); e.target.checked = false; } e.target.disabled = false; }; }
   if ($('#updFile')) $('#updFile').onchange = e => updateFromFile(e.target.files[0]);
   $('#ckFile').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { await api('/api/cookies', { method: 'POST', body: f }); toast(t('ck_on')); vSettings(); } catch (err) { toast('✗ ' + err.message); } };
+}
+const IS_LAN = location.port === '8766';
+async function lanShow(st) {
+  st = st || await api('/api/lan'); const box = $('#lanBox'); if (!box) return;
+  $('#lanSw').checked = st.on;
+  box.innerHTML = !st.on ? '' : !st.url ? `<p class="warnc">${t('lan_nowifi')}</p>` : `<div class="lanbox">
+    <div class="qr">${st.qr || ''}</div><div class="addr">${esc(st.url)}</div>
+    <div><small class="muted">${t('lan_code')}</small><div class="code">${esc(st.code)}</div></div></div>
+    <ol class="small" style="line-height:2;padding-inline-start:20px">${t('lan_steps').split('|').map(x => `<li>${x}</li>`).join('')}</ol>
+    <button class="btn ghost" data-act="lan-new">↻ ${t('lan_new')}</button>`;
 }
 async function saveSet(obj) {
   await post('/api/settings', obj);
@@ -1552,6 +1603,8 @@ async function playAt(itemId, at) {
 const ACT = {
   back: () => history.length > 1 ? history.back() : (location.hash = '#/lib'),
   add: () => addSheet(),
+  'lan-new': async () => { lanShow(await post('/api/lan', { on: true, new_code: true })); toast(t('saved')); },
+  'theme-toggle': () => saveSet({ theme: document.documentElement.classList.contains('isdark') ? 'light' : 'dark' }),
   'new-folder': async () => { const id = await customizeFolder(null); if (id) location.hash = '#/lib/f/' + id; },
   'custom-folder': async el => { await loadLib(); const f = S.folders.find(x => x.id === +el.dataset.id); if (await customizeFolder(f)) route(); },
   'del-folder': async el => { if (await ask(t('del_folder_q'), t('delete'), true)) { await del('/api/folders/' + el.dataset.id); location.hash = '#/lib'; } },

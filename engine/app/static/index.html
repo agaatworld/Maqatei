@@ -6,21 +6,22 @@
 <title>مقاطع</title>
 <link rel="icon" href="/static/icon-192.png">
 <link rel="manifest" href="/static/manifest.webmanifest">
-<meta name="theme-color" content="#0d6e5f">
+<meta name="theme-color" content="#F6F3EC">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="مقاطع">
 <link rel="apple-touch-icon" href="/static/icon-192.png">
 <link rel="stylesheet" href="/static/fonts.css">
 <link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/theme.css">
 </head>
 <body>
 <header class="top">
   <button class="ib" id="backBtn" data-act="back" hidden aria-label="Back">→</button>
   <a class="brand" href="#/lib"><span class="logo">م</span><div class="minw"><h1 id="appName">مقاطع</h1><small id="appSub"></small></div></a>
   <div class="grow"></div>
-  <a class="ib" href="#/search" aria-label="Search">🔎</a>
-  <button class="ib add" data-act="add" aria-label="Add">＋</button>
+  <button class="ib" id="themeBtn" data-act="theme-toggle" aria-label="Theme"></button>
+  <a class="ib" href="#/settings" id="setBtn" aria-label="Settings">⚙️</a>
 </header>
 <nav class="tabbar" id="tabbar"></nav>
 <main class="view" id="view"></main>
@@ -36,6 +37,7 @@
 
 <div class="toast" id="toast" hidden></div>
 <dialog class="sheet" id="sheet"></dialog>
+<script src="/static/icons.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>

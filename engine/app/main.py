@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
-from . import db, export, jobs, media, search, transcribe
+from . import db, export, jobs, lan, media, search, transcribe
 from .i18n import M
 from .version import VERSION
 
@@ -58,7 +58,7 @@ def route(method, pattern):
 def index(r):
     """The page, with each script/style address stamped by its file time, so a phone never keeps an old copy."""
     html = (STATIC / "index.html").read_text(encoding="utf-8")
-    for name in ("app.js", "style.css", "fonts.css"):
+    for name in ("app.js", "style.css", "fonts.css", "theme.css", "icons.js"):
         stamp = int((STATIC / name).stat().st_mtime)
         html = html.replace(f"/static/{name}\"", f"/static/{name}?v={stamp}\"")
     return Raw(html.encode("utf-8"), "text/html; charset=utf-8")
@@ -932,12 +932,13 @@ def all_jobs(r, op):
 def get_settings(r):
     s = db.get_settings()
     s["groq_key_set"] = bool(s.pop("groq_key"))
+    s.pop("lan_code", None)
     return s
 
 
 @route("POST", "/api/settings")
 def save_settings(r):
-    b = dict(r.body)
+    b = {k: v for k, v in r.body.items() if not k.startswith("lan_")}
     if not b.get("groq_key"):
         b.pop("groq_key", None)
     db.set_settings(b)
@@ -1027,6 +1028,28 @@ def del_cookies(r):
     return {"ok": True}
 
 
+@route("GET", "/api/lan")
+def lan_status(r):
+    return lan.status()
+
+
+@route("POST", "/api/lan")
+def lan_switch(r):
+    """Open or close the door for other devices on the Wi-Fi (an iPhone, a tablet, a computer)."""
+    if HOSTED:
+        raise HTTPError(400, M("hosted_disabled"))
+    if r.body.get("new_code"):
+        db.set_settings({"lan_code": ""})
+        lan.code()
+    if r.body.get("on"):
+        if not lan.start(Handler):
+            raise HTTPError(409, "port busy")
+    elif "on" in r.body:
+        lan.stop()
+    db.set_settings({"lan_on": lan.status()["on"]})
+    return lan.status()
+
+
 @route("POST", "/api/update-downloader")
 def update_downloader(r):
     if HOSTED:
@@ -1085,6 +1108,13 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         self.query = {k: v[-1] for k, v in parse_qs(u.query).items()}
         self.body = {}
+        if getattr(self.server, "maqati_lan", False):          # a request from another device on the Wi-Fi
+            if u.path == "/lan-login":
+                return self.lan_login(method)
+            if not lan.allowed(self, u.path):
+                if method == "GET" and not u.path.startswith(("/api/", "/media/", "/export", "/static/")):
+                    return self.send_raw(Raw(lan.login_page().encode("utf-8"), "text/html; charset=utf-8"))
+                return self.send_json({"detail": "locked"}, 401)
         try:
             for m, rx, fn in ROUTES:
                 mt = rx.match(u.path)
@@ -1116,6 +1146,19 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"detail": str(e)}, 500)
             except Exception:
                 pass
+
+    def lan_login(self, method):
+        if method != "POST":
+            return self.send_raw(Raw(lan.login_page().encode("utf-8"), "text/html; charset=utf-8"))
+        n = int(self.headers.get("Content-Length") or 0)
+        form = parse_qs(self.rfile.read(min(n, 2000)).decode("utf-8", "replace"))
+        if not lan.try_login(self, (form.get("code") or [""])[0]):
+            return self.send_raw(Raw(lan.login_page(wrong=True).encode("utf-8"), "text/html; charset=utf-8"))
+        self.send_response(303)
+        self.send_header("Location", "/")
+        self.send_header("Set-Cookie", f"mq_lan={lan.token()}; Max-Age=31536000; Path=/; HttpOnly; SameSite=Lax")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def send_json(self, data, code=200):
         b = json.dumps(data, ensure_ascii=False).encode("utf-8")
@@ -1235,6 +1278,8 @@ def main():
     srv.daemon_threads = True
     android_autostart()
     jobs.start()
+    if db.get_settings().get("lan_on") and not HOSTED:
+        lan.start(Handler)
     if APK:
         media.auto_update_ytdlp(_update)
         import signal

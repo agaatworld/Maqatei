@@ -72,17 +72,19 @@ DEFAULT_SETTINGS = {
     "lang": "ar",
     "auto_download": "video",   # what to do with a new link: video | audio | none
     "theme": "auto",        # auto | light | dark | sepia
-    "accent": "#0d6e5f",
+    "accent": "#0F5C4D",
     "font_scale": 1.0,
     "show_transcript": True,
     "follow": True,
     "pad_before": 3,        # seconds added before a search hit when making a clip
     "pad_after": 5,
-    "font_ui": "tajawal",   # the app's text
-    "font_head": "tajawal", # headings
+    "font_ui": "plex",      # the app's text
+    "font_head": "plex",    # headings
     "font_read": "amiri",   # transcripts and reading
     "reencode_video": False, # video parts: False = instant copy with exact start/end marks; True = re-encode
     "dhikr": 15,            # minutes between the small reminder (0 = off)
+    "lan_on": False,        # open from an iPhone or another device on the same Wi-Fi
+    "lan_code": "",         # the 6-digit code that device must type once
 }
 
 

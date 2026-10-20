@@ -53,4 +53,11 @@ python3 -c "import json;j=[x for x in json.load(open('$OUT/jobs.json')) if x['ki
 sleep 3
 adb exec-out screencap -p > $OUT/app.png
 curl -sf http://127.0.0.1:8765/ | grep -q "app.js" && echo "page OK"
+
+# open from an iPhone: the Wi-Fi door answers with the code page, and keeps the library locked
+curl -sf -X POST -H 'Content-Type: application/json' -d '{"on":true}' http://127.0.0.1:8765/api/lan > $OUT/lan.json
+adb forward tcp:8766 tcp:8766
+curl -sf http://127.0.0.1:8766/ | grep -q "lan-login" && echo "Wi-Fi code page OK"
+test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8766/api/state)" = "401" && echo "Wi-Fi locked without code OK"
+curl -sf -X POST -H 'Content-Type: application/json' -d '{"on":false}' http://127.0.0.1:8765/api/lan > /dev/null
 echo "SMOKE TEST PASSED"
