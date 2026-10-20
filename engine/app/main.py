@@ -461,7 +461,7 @@ def del_transcript(r, tid):
 
 
 # ---------- transcript editing ----------
-@route("PATCH", "/api/transcripts/(?P<tid>\d+)")
+@route("PATCH", r"/api/transcripts/(?P<tid>\d+)")
 def patch_transcript(r, tid):
     t = db.one("SELECT * FROM transcripts WHERE id=?", (int(tid),))
     if not t:
@@ -477,19 +477,19 @@ def patch_transcript(r, tid):
     return {"ok": True}
 
 
-@route("GET", "/api/items/(?P<iid>\d+)/segments")
+@route("GET", r"/api/items/(?P<iid>\d+)/segments")
 def item_segments(r, iid):
     return export.item_segments(int(iid))
 
 
 # ---------- notes & benefits ----------
-@route("POST", "/api/items/(?P<iid>\d+)/notes")
+@route("POST", r"/api/items/(?P<iid>\d+)/notes")
 def add_note(r, iid):
     return {"id": db.run("INSERT INTO notes (item_id, text, time, created, updated) VALUES (?,?,?,?,?)",
                          (int(iid), (r.body.get("text") or "").strip(), num(r.body.get("time")), db.now(), db.now()))}
 
 
-@route("PATCH", "/api/notes/(?P<nid>\d+)")
+@route("PATCH", r"/api/notes/(?P<nid>\d+)")
 def patch_note(r, nid):
     if r.body.get("text") is not None:
         db.run("UPDATE notes SET text=?, updated=? WHERE id=?", (r.body["text"].strip(), db.now(), int(nid)))
@@ -498,14 +498,14 @@ def patch_note(r, nid):
     return {"ok": True}
 
 
-@route("DELETE", "/api/notes/(?P<nid>\d+)")
+@route("DELETE", r"/api/notes/(?P<nid>\d+)")
 def del_note(r, nid):
     db.run("DELETE FROM notes WHERE id=?", (int(nid),))
     return {"ok": True}
 
 
 # ---------- excerpts: titled parts of a transcript ----------
-@route("POST", "/api/items/(?P<iid>\d+)/excerpts")
+@route("POST", r"/api/items/(?P<iid>\d+)/excerpts")
 def add_excerpt(r, iid):
     a, b = num(r.body.get("start")), num(r.body.get("end"))
     if a is None or b is None or b <= a:
@@ -515,7 +515,7 @@ def add_excerpt(r, iid):
                          (int(iid), a, b, (r.body.get("title") or "").strip(), text, r.body.get("note") or "", db.now()))}
 
 
-@route("PATCH", "/api/excerpts/(?P<xid>\d+)")
+@route("PATCH", r"/api/excerpts/(?P<xid>\d+)")
 def patch_excerpt(r, xid):
     for k in ("title", "note"):
         if r.body.get(k) is not None:
@@ -523,13 +523,13 @@ def patch_excerpt(r, xid):
     return {"ok": True}
 
 
-@route("DELETE", "/api/excerpts/(?P<xid>\d+)")
+@route("DELETE", r"/api/excerpts/(?P<xid>\d+)")
 def del_excerpt(r, xid):
     db.run("DELETE FROM excerpts WHERE id=?", (int(xid),))
     return {"ok": True}
 
 
-@route("POST", "/api/excerpts/(?P<xid>\d+)/clip")
+@route("POST", r"/api/excerpts/(?P<xid>\d+)/clip")
 def clip_excerpt(r, xid):
     x = db.one("SELECT * FROM excerpts WHERE id=?", (int(xid),))
     i = db.one("SELECT * FROM items WHERE id=?", (x["item_id"],))
@@ -541,7 +541,7 @@ def clip_excerpt(r, xid):
 
 
 # ---------- what a folder holds: lessons, parts, excerpts ----------
-@route("GET", "/api/folders/(?P<fid>\w+)/contents")
+@route("GET", r"/api/folders/(?P<fid>\w+)/contents")
 def folder_contents(r, fid):
     if fid not in ("all", "none") and not fid.isdigit():
         raise HTTPError(404)
@@ -577,14 +577,14 @@ def folder_contents(r, fid):
 
 
 # ---------- lessons inside projects ----------
-@route("POST", "/api/projects/(?P<pid>\d+)/items")
+@route("POST", r"/api/projects/(?P<pid>\d+)/items")
 def add_project_item(r, pid):
     db.run("INSERT OR IGNORE INTO project_items (project_id, item_id, created) VALUES (?,?,?)",
            (int(pid), int(r.body["item_id"]), db.now()))
     return {"ok": True}
 
 
-@route("DELETE", "/api/projects/(?P<pid>\d+)/items/(?P<iid>\d+)")
+@route("DELETE", r"/api/projects/(?P<pid>\d+)/items/(?P<iid>\d+)")
 def del_project_item(r, pid, iid):
     db.run("DELETE FROM project_items WHERE project_id=? AND item_id=?", (int(pid), int(iid)))
     return {"ok": True}
@@ -611,7 +611,7 @@ def new_project(r):
                          ((r.body.get("name") or "").strip() or "Project", r.body.get("description") or "", db.now()))}
 
 
-@route("GET", "/api/projects/(?P<pid>\d+)")
+@route("GET", r"/api/projects/(?P<pid>\d+)")
 def get_project(r, pid):
     p = db.one("SELECT * FROM projects WHERE id=?", (int(pid),))
     if not p:
@@ -636,7 +636,7 @@ def get_project(r, pid):
     return p
 
 
-@route("PATCH", "/api/projects/(?P<pid>\d+)")
+@route("PATCH", r"/api/projects/(?P<pid>\d+)")
 def patch_project(r, pid):
     for k in ("name", "description"):
         if r.body.get(k) is not None:
@@ -650,7 +650,7 @@ def patch_project(r, pid):
     return {"ok": True}
 
 
-@route("DELETE", "/api/projects/(?P<pid>\d+)")
+@route("DELETE", r"/api/projects/(?P<pid>\d+)")
 def del_project(r, pid):
     db.run("DELETE FROM project_clips WHERE project_id=?", (int(pid),))
     db.run("DELETE FROM project_items WHERE project_id=?", (int(pid),))
@@ -658,7 +658,7 @@ def del_project(r, pid):
     return {"ok": True}
 
 
-@route("POST", "/api/projects/(?P<pid>\d+)/clips")
+@route("POST", r"/api/projects/(?P<pid>\d+)/clips")
 def add_pclip(r, pid):
     b = r.body
     pos = (db.one("SELECT MAX(pos) m FROM project_clips WHERE project_id=?", (int(pid),))["m"] or 0) + 1
@@ -668,7 +668,7 @@ def add_pclip(r, pid):
                                                         (b.get("section") or "").strip() or None))}
 
 
-@route("PATCH", "/api/pclips/(?P<cid>\d+)")
+@route("PATCH", r"/api/pclips/(?P<cid>\d+)")
 def patch_pclip(r, cid):
     for k in ("title", "note"):
         if r.body.get(k) is not None:
@@ -681,13 +681,13 @@ def patch_pclip(r, cid):
     return {"ok": True}
 
 
-@route("DELETE", "/api/pclips/(?P<cid>\d+)")
+@route("DELETE", r"/api/pclips/(?P<cid>\d+)")
 def del_pclip(r, cid):
     db.run("DELETE FROM project_clips WHERE id=?", (int(cid),))
     return {"ok": True}
 
 
-@route("POST", "/api/pclips/(?P<cid>\d+)/move")
+@route("POST", r"/api/pclips/(?P<cid>\d+)/move")
 def move_pclip(r, cid):
     c = db.one("SELECT * FROM project_clips WHERE id=?", (int(cid),))
     rows = db.q("SELECT id FROM project_clips WHERE project_id=? ORDER BY pos, id", (c["project_id"],))
@@ -700,7 +700,7 @@ def move_pclip(r, cid):
     return {"ok": True}
 
 
-@route("POST", "/api/projects/(?P<pid>\d+)/export")
+@route("POST", r"/api/projects/(?P<pid>\d+)/export")
 def export_project(r, pid):
     p = db.one("SELECT * FROM projects WHERE id=?", (int(pid),))
     jid = jobs.add("project", None, M("t_project", t=p["name"]), project_id=p["id"], fmt=r.body.get("fmt", "mp3"))
