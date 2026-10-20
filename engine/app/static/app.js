@@ -600,7 +600,7 @@ function heroCard() {
 }
 /* the lessons of the old (Termux) version: offer to bring them over while it is still running */
 async function oldBox() {
-  const box = $('#oldBox'); if (!box || IS_LAN) return;
+  const box = $('#oldBox'); if (!box || IS_LAN || IS_WEB) return;
   if (S.impDone) { box.innerHTML = `<div class="banner">✅ <b class="grow minw">${t('imp_done', S.impDone)}</b></div>`; S.impDone = 0; return; }
   if (S.set.imported_old) return;                  // already brought over: nothing to ask the old version
   let st; try { st = await api('/api/import-old'); } catch (e) { return; }
@@ -771,10 +771,10 @@ async function customizeFolder(f) {
 async function addSheet() {
   await loadLib();
   const cur = (location.hash.match(/^#\/lib\/f\/(\d+)/) || [])[1] || (S.item && S.item.folder_id) || '';
-  let mode = store.get('addmode', 'links'), files = [], how = S.set.auto_download || 'video';
+  let mode = IS_WEB ? 'files' : store.get('addmode', 'links'), files = [], how = S.set.auto_download || 'video';
   const folderOpts = `<option value="">${t('unsorted')}</option>` + S.folders.map(f => `<option value="${f.id}" ${String(cur) === String(f.id) ? 'selected' : ''}>${esc((f.icon || '📁') + ' ' + f.name)}</option>`).join('');
   await sheet('＋ ' + t('add'), `
-    <div class="segc big" style="margin-bottom:14px"><button data-m="links">🔗 ${t('links')}</button><button data-m="files">📁 ${t('files')}</button></div>
+    <div class="segc big" style="margin-bottom:14px"${IS_WEB ? ' hidden' : ''}><button data-m="links">🔗 ${t('links')}</button><button data-m="files">📁 ${t('files')}</button></div>
     <div data-p="links"><div class="field"><textarea id="linksIn" dir="ltr" placeholder="${t('links_ph')}" style="min-height:110px"></textarea><small>${t('links_hint')}</small></div>
       <div class="field"><label>${t('add_how')}</label>${segc('how', how, [['video', t('as_video')], ['audio', t('as_audio')], ['none', t('as_link')]])}<small>${t('add_how_p')}</small></div>
       <div class="field" id="addQF"><label>🎬 ${t('quality')}</label><select id="addQ"><option value="">${t('q_default', S.set.video_height >= 9999 ? t('q_orig') : (S.set.video_height || 720) + 'p')}</option>
@@ -1539,7 +1539,7 @@ async function vSettings() {
     <a class="btn gold big wide" href="#/help" style="margin-bottom:14px">📘 ${t('help')}</a>
     <div class="setgrid">
     <div class="card pad"><div class="field"><label>🌐 ${t('s_lang')}</label>${sg('lang', LANG, [['ar', 'العربية'], ['en', 'English']])}</div>
-      <div class="field"><label>🔗 ${t('s_newlink')}</label>${sg('auto_download', s.auto_download || 'video', [['video', t('as_video')], ['audio', t('as_audio')], ['none', t('as_link')]])}</div></div>
+      <div class="field"${h.web ? ' hidden' : ''}><label>🔗 ${t('s_newlink')}</label>${sg('auto_download', s.auto_download || 'video', [['video', t('as_video')], ['audio', t('as_audio')], ['none', t('as_link')]])}</div></div>
     <div class="card pad"><h3>🎨 ${t('s_look')}</h3>
       <div class="field"><label>${t('s_theme')}</label>${sg('theme', s.theme || 'auto', [['auto', t('auto')], ['light', t('light')], ['dark', t('dark')], ['sepia', t('sepia')]])}</div>
       <div class="field"><label>${t('s_accent')}</label><div class="swatches">${COLORS.map(c => `<button type="button" data-accent="${c}" style="background:${c}" class="${c === s.accent ? 'on' : ''}"></button>`).join('')}</div></div>
@@ -1553,7 +1553,7 @@ async function vSettings() {
     <div class="card pad"><h3>🤲 ${t('s_dhikr')}</h3><p class="muted small">${t('dhikr_p')}</p>${sg('dhikr', s.dhikr ?? 15, [[0, t('off')], [10, t('m10')], [15, t('m15')]])}${sw('reminders', t('s_rmd'))}</div>
     <div class="card pad"><h3>📝 ${t('s_tr')}</h3>
       <div class="field"><label>${t('s_engine')}</label><select data-set-sel="engine"><option value="groq" ${s.engine === 'groq' ? 'selected' : ''}>${t('engine_groq')}</option>
-        ${h.android ? '' : `<option value="local" ${s.engine === 'local' ? 'selected' : ''}>${t('engine_local')}</option>`}</select></div>
+        ${h.android || h.web ? '' : `<option value="local" ${s.engine === 'local' ? 'selected' : ''}>${t('engine_local')}</option>`}</select></div>
       <div class="field"><label>${t('s_key')} ${s.groq_key_set ? '✅' : ''}</label><input type="password" id="gkey" dir="ltr" placeholder="${s.groq_key_set ? t('key_saved') : 'gsk_…'}">
         <small>${t('key_hint')} <a href="https://console.groq.com/keys" target="_blank">console.groq.com/keys</a></small></div>
       <div class="field"><button class="btn soft big wide" data-act="test-tr">🧪 ${t('test_tr')}</button><div id="testTr" style="margin-top:8px"></div></div>
@@ -1566,23 +1566,23 @@ async function vSettings() {
     <div class="card pad"><h3>🔎 ${t('s_search')}</h3><div class="btns nowrap">
       <div class="field grow"><label>${t('pad_before')}</label><input type="number" min="0" max="60" data-set-num="pad_before" value="${s.pad_before}"></div>
       <div class="field grow"><label>${t('pad_after')}</label><input type="number" min="0" max="120" data-set-num="pad_after" value="${s.pad_after}"></div></div></div>
-    <div class="card pad"><h3>⬇ ${t('s_dl')}</h3><div class="btns nowrap">
+    ${h.web ? '' : `<div class="card pad"><h3>⬇ ${t('s_dl')}</h3><div class="btns nowrap">
       <div class="field grow"><label>${t('s_md')}</label><input type="number" min="1" max="8" data-set-num="max_downloads" value="${s.max_downloads}"></div>
       <div class="field grow"><label>${t('s_mt')}</label><input type="number" min="1" max="6" data-set-num="max_transcribes" value="${s.max_transcribes}"></div></div>
-      <div class="field"><label>${t('s_quality')}</label>${sg('video_height', s.video_height, [[9999, '⭐ ' + t('q_orig')], [1080, '1080p'], [720, '720p'], [480, '480p'], [360, '360p']])}</div></div>
-    <div class="card pad"><h3>▶️ ${t('s_yt')}</h3><p>${h.cookies ? '✅ ' + t('ck_on') : 'ℹ️ ' + t('ck_off')}</p>
+      <div class="field"><label>${t('s_quality')}</label>${sg('video_height', s.video_height, [[9999, '⭐ ' + t('q_orig')], [1080, '1080p'], [720, '720p'], [480, '480p'], [360, '360p']])}</div></div>`}
+    ${h.web ? '' : `<div class="card pad"><h3>▶️ ${t('s_yt')}</h3><p>${h.cookies ? '✅ ' + t('ck_on') : 'ℹ️ ' + t('ck_off')}</p>
       <div class="btns"><button class="btn big" data-act="ck-add">🍪 ${t('ck_add')}</button>${h.cookies ? `<button class="btn ghost danger" data-act="ck-del">🗑 ${t('ck_del')}</button>` : ''}
         ${h.hosted ? '' : `<button class="btn" data-act="upd-ytdlp">⬇ ${t('upd_ytdlp')}</button>`}<input type="file" id="ckFile" accept=".txt,text/plain" hidden></div>
       <div class="btns" style="margin-top:10px"><button class="btn soft big wide" data-act="test-mirrors">🛰️ ${t('test_mirrors')}</button></div><div id="mirRes" style="margin-top:8px"></div>
-      <p class="muted small">${t('ck_p')}</p></div>
-    ${h.hosted || IS_LAN ? '' : `<div class="card pad" id="lanCard"><h3>📱 ${t('lan_t')}</h3><p class="muted">${t('lan_p')}</p>
+      <p class="muted small">${t('ck_p')}</p></div>`}
+    ${h.hosted || h.web || IS_LAN ? '' : `<div class="card pad" id="lanCard"><h3>📱 ${t('lan_t')}</h3><p class="muted">${t('lan_p')}</p>
       <label class="sw"><span>${t('lan_sw')}</span><input type="checkbox" id="lanSw"></label><div id="lanBox"></div></div>`}
     ${h.apk ? `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
       <p class="muted">${t('version')}: <b>${esc(h.version)}</b>${window.MaqatiApp ? ` · ${LANG === 'ar' ? 'التطبيق' : 'App'} <b dir="ltr">${esc(MaqatiApp.appVersion())}</b>` : ''}</p>
       <div class="btns"><button class="btn pri big" data-act="apk-update">🔍 ${t('upd_find')}</button></div>
       <div class="btns" style="margin-top:10px"><button class="btn" data-act="upd-ytdlp">⬇ ${t('upd_ytdlp')}</button><span class="muted small" id="ytdlpMsg">${esc(h.update.msg)}</span></div>
       ${window.MaqatiApp ? `<div class="btns" style="margin-top:10px"><button class="btn ghost" data-act="apk-battery">🔋 ${LANG === 'ar' ? 'السماح بالعمل في الخلفية' : 'Allow background work'}</button></div>` : ''}</div>` : ''}
-    ${h.hosted || h.apk ? '' : `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
+    ${h.hosted || h.apk || h.web ? '' : `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
       <p class="muted">${t('version')}: <b>${esc(h.version)}</b></p>
       <div class="btns"><button class="btn pri big" data-act="upd-find">🔍 ${t('upd_find')}</button><button class="btn big" data-act="upd-file">📦 ${t('upd_file')}</button>
         <input type="file" id="updFile" accept=".zip,application/zip" hidden></div><div id="updMsg" style="margin-top:10px"></div>
@@ -1591,15 +1591,16 @@ async function vSettings() {
       <p class="muted">${LANG === 'ar' ? 'مسجّل الدخول باسم' : 'Signed in as'}: <b dir="auto">${esc(h.user || '')}</b></p>
       <a class="btn ghost" href="/gw/logout">🚪 ${LANG === 'ar' ? 'تسجيل الخروج' : 'Log out'}</a></div>` : ''}
     <div class="card pad"><h3>🩺 ${t('s_status')}</h3>
-      ${h.hosted ? `<p class="muted">${t('version')}: <b>${esc(h.version)}</b></p>` : ''}
-      <div>${ok(h.ffmpeg)} ffmpeg</div><div>${ok(h.ytdlp)} yt-dlp ${esc(h.ytdlp || '')}</div><div>${ok(h.js)} YouTube helper (${esc(h.js || '—')})</div>
-      ${h.hosted ? '' : `<div class="muted small" style="margin-top:8px">${t('files_at')} <span dir="ltr" class="brk">${esc(h.library)}</span></div>`}</div></div>`;
+      ${h.hosted || h.web ? `<p class="muted">${t('version')}: <b>${esc(h.version)}</b></p>` : ''}
+      ${h.web ? `<div>${ok(1)} ${LANG === 'ar' ? 'يعمل داخل المتصفح، وملفاتك محفوظة على هذا الجهاز' : 'Runs inside the browser; your files stay on this device'}</div>` : `<div>${ok(h.ffmpeg)} ffmpeg</div><div>${ok(h.ytdlp)} yt-dlp ${esc(h.ytdlp || '')}</div><div>${ok(h.js)} YouTube helper (${esc(h.js || '—')})</div>`}
+      ${h.hosted || h.web ? '' : `<div class="muted small" style="margin-top:8px">${t('files_at')} <span dir="ltr" class="brk">${esc(h.library)}</span></div>`}</div></div>`;
   $('#gkey').onchange = e => saveSet({ groq_key: e.target.value.trim() }).then(() => { e.target.value = ''; vSettings(); });
   if ($('#lanSw')) { lanShow(); $('#lanSw').onchange = async e => { e.target.disabled = true; try { lanShow(await post('/api/lan', { on: e.target.checked })); } catch (err) { toast('✗ ' + err.message); e.target.checked = false; } e.target.disabled = false; }; }
   if ($('#updFile')) $('#updFile').onchange = e => updateFromFile(e.target.files[0]);
-  $('#ckFile').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { await api('/api/cookies', { method: 'POST', body: f }); toast(t('ck_on')); vSettings(); } catch (err) { toast('✗ ' + err.message); } };
+  if ($('#ckFile')) $('#ckFile').onchange = async e => { const f = e.target.files[0]; if (!f) return; try { await api('/api/cookies', { method: 'POST', body: f }); toast(t('ck_on')); vSettings(); } catch (err) { toast('✗ ' + err.message); } };
 }
 const IS_LAN = location.port === '8766';
+const IS_WEB = !!window.MAQATI_WEB;        // the iPhone version: the engine runs inside the browser (no links, no Wi-Fi door)
 async function lanShow(st) {
   st = st || await api('/api/lan'); const box = $('#lanBox'); if (!box) return;
   $('#lanSw').checked = st.on;
@@ -1940,5 +1941,5 @@ document.addEventListener('keydown', e => {
   await route();
   if (S.set.engine === 'groq' && !S.set.groq_key_set) setTimeout(() => toast(t('key_tip'), { label: t('settings'), fn: () => location.hash = '#/settings' }), 1200);
 })();
-if ('serviceWorker' in navigator && isSecureContext) navigator.serviceWorker.register('/sw.js').catch(() => {});
+if ('serviceWorker' in navigator && isSecureContext && !IS_WEB) navigator.serviceWorker.register('/sw.js').catch(() => {});
 

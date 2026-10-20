@@ -7,3 +7,7 @@ __pycache__/
 *.pyc
 smoke-out/
 dist/
+
+# iPhone (web) build output and its downloads
+site/
+web/.cache/

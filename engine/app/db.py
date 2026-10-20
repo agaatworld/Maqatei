@@ -16,7 +16,8 @@ for d in (DATA, LIBRARY, WORK):
 _lock = threading.RLock()
 _conn = sqlite3.connect(DATA / "maqati.db", check_same_thread=False)
 _conn.row_factory = sqlite3.Row
-_conn.execute("PRAGMA journal_mode=WAL")
+# in the iPhone version the database file is kept in the browser's storage, which needs a single file
+_conn.execute("PRAGMA journal_mode=" + ("DELETE" if os.environ.get("MAQATI_WEB") == "1" else "WAL"))
 
 _conn.executescript("""
 CREATE TABLE IF NOT EXISTS folders (
