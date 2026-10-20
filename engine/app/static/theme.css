@@ -362,8 +362,8 @@ img.logo{object-fit:cover;padding:0;background:none;box-shadow:0 6px 16px -8px r
 .tabbar .tadd span,.tabbar .xsep,.tabbar a.x{display:none}
 .tabbar a i{position:relative}
 .tabbar a.on i::after{content:"";position:absolute;left:50%;bottom:-3px;width:5px;height:5px;border-radius:50%;background:var(--gold-hi);transform:translateX(-50%);animation:badge .3s var(--ease)}
-/* the first card: an eight-pointed star lattice, drawn faintly, like a mosque screen */
-.hero::before{content:"";position:absolute;inset:0;opacity:.13;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56' fill='none' stroke='white' stroke-width='1.1'%3E%3Crect x='17' y='17' width='22' height='22'/%3E%3Crect x='17' y='17' width='22' height='22' transform='rotate(45 28 28)'/%3E%3Ccircle cx='0' cy='0' r='4'/%3E%3Ccircle cx='56' cy='0' r='4'/%3E%3Ccircle cx='0' cy='56' r='4'/%3E%3Ccircle cx='56' cy='56' r='4'/%3E%3C/svg%3E") 0 0/56px 56px}
+/* the first card: a faint diagonal weave, nothing more (no star or geometric motifs: the owner does not want them) */
+.hero::before{content:"";position:absolute;inset:0;opacity:.07;pointer-events:none;background:repeating-linear-gradient(135deg,transparent 0 14px,#fff 14px 15px)}
 .hero>*{position:relative}
 .hero.first{width:100%;border:0;font:inherit;text-align:start;cursor:pointer}
 .hero.first .go{background:rgba(255,255,255,.14);color:var(--gold-hi);display:grid}

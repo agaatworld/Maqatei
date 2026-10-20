@@ -24,6 +24,10 @@ The full product brief is in `docs/REBUILD-BRIEF.md`. Read sections 4 (features 
 - No YouTube links on the web version (browsers can't). `tests/web/live.js` + `web-check.yml` (run it by hand:
   workflow_dispatch) use the live site and put screenshots in the `web-check` pre-release.
 
+## Design rules from the owner
+- **No eight-pointed stars or Islamic geometric motifs** anywhere (icons, patterns, backgrounds). He has refused them more than once.
+- Few buttons; one button may open a page that leads to other pages. Compact, not "large mode".
+
 ## Before every push
 - `PYTHONPATH=engine/vendor python3 tests/test_transcribe_pipeline.py`
 - `node --check engine/app/static/app.js`
