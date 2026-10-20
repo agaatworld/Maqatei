@@ -79,8 +79,8 @@ DEFAULT_SETTINGS = {
     "follow": True,
     "pad_before": 3,        # seconds added before a search hit when making a clip
     "pad_after": 5,
-    "font_ui": "plex",      # the app's text
-    "font_head": "plex",    # headings
+    "font_ui": "almarai",   # the app's text
+    "font_head": "almarai", # headings
     "font_read": "amiri",   # transcripts and reading
     "reencode_video": False, # video parts: False = instant copy with exact start/end marks; True = re-encode
     "dhikr": 15,            # minutes between the small reminder (0 = off)

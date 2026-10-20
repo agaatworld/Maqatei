@@ -13,6 +13,9 @@ const TX = {
   library: ['Library', 'المكتبة'], search: ['Search', 'البحث'], projects: ['Projects', 'المشاريع'], tasks: ['Tasks', 'المهام'],
   settings: ['Settings', 'الإعدادات'], help: ['How to use', 'دليل الاستخدام'],
   all_items: ['All', 'الكل'], unsorted: ['Unsorted', 'غير مصنّف'], new_folder: ['New folder', 'مجلد جديد'],
+  home: ['Home', 'البداية'], now_running: ['Running now', 'جارٍ الآن'], nothing_running: ['Nothing is running. Cuts and transcriptions you start will show here.', 'لا شيء يعمل الآن. ما تبدؤه من قصّ أو تفريغ يظهر هنا.'],
+  recent_works: ['Your latest works', 'أحدث أعمالك'], your_folders: ['Your folders', 'مجلداتك'], see_all: ['All', 'الكل'], home_search_ph: ['Search every transcript…', 'ابحث في كل التفريغات…'],
+  first_lesson: ['Add your first lesson', 'أضف أول درس'], first_lesson_p: ['A recording from your device, or a link.', 'تسجيلًا من جهازك أو رابطًا.'],
   recent: ['Recently added', 'أُضيف مؤخرًا'], items_n: ['{0} items', '{0} عناصر'], add: ['Add', 'إضافة'],
   empty_lib: ['Your library is empty', 'مكتبتك فارغة'], empty_lib_p: ['Add a YouTube link, a SoundCloud link, or a file from your device.', 'أضف رابط يوتيوب أو ساوند كلاود أو ملفًّا من جهازك.'],
   empty_folder: ['Nothing here yet — tap “Add”.', 'لا شيء هنا بعد — اضغط «إضافة».'],
@@ -289,36 +292,40 @@ async function loadLib() { const st = await api('/api/state'); S.folders = st.fo
 
 /* ================= router ================= */
 const ROUTES = [
-  [/^#\/lib$/, () => vLibrary()], [/^#\/lib\/f\/(\w+)(?:\/(\w+))?$/, m => vFolder(m[1], m[2])], [/^#\/item\/(\d+)(?:\/(\d+(?:\.\d+)?))?$/, m => vItem(+m[1], m[2] ? +m[2] : null)],
+  [/^#\/home$/, () => vHome()], [/^#\/lib$/, () => vLibrary()], [/^#\/lib\/f\/(\w+)(?:\/(\w+))?$/, m => vFolder(m[1], m[2])], [/^#\/item\/(\d+)(?:\/(\d+(?:\.\d+)?))?$/, m => vItem(+m[1], m[2] ? +m[2] : null)],
   [/^#\/search$/, () => vSearch()], [/^#\/projects$/, () => vProjects()], [/^#\/project\/(\d+)$/, m => vProject(+m[1])],
   [/^#\/tasks(?:\/(\w+))?$/, m => vTasks(m[1])], [/^#\/works$/, () => vFolder('all', 'works', true)], [/^#\/settings$/, () => vSettings()], [/^#\/help$/, () => vHelp()],
 ];
 async function route() {
-  const h = location.hash || '#/lib';
+  const h = location.hash || '#/home';
   if (!/^#\/item\//.test(h)) leaveItemPage();
   S.pick = null;
   const hit = ROUTES.find(([rx]) => rx.test(h));
-  if (!hit) { location.hash = '#/lib'; return; }
+  if (!hit) { location.hash = '#/home'; return; }
   const v = view(); if (!pollJobs.busy) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); }
   clearTimeout(route.t); route.t = setTimeout(() => v.classList.remove('enter'), 900);
   await hit[1](h.match(hit[0]));
-  $('#backBtn').hidden = !/^#\/(lib\/f|item|project\/|help|search)/.test(h);
+  $('#backBtn').hidden = !/^#\/(lib\/f|item|project\/|help|works|tasks|settings)/.test(h);
   renderTabs(); PL.place();
 }
 window.addEventListener('hashchange', () => { route().then(() => window.scrollTo(0, 0)); });
 window.addEventListener('scroll', () => $('.top').classList.toggle('scrolled', window.scrollY > 4), { passive: true });
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (S.set.theme === 'auto' || !S.set.theme) applyLook(); });
 function renderTabs() {
-  const h = location.hash || '#/lib';
-  const on = /^#\/(lib|item)/.test(h) ? 'lib' : /^#\/search/.test(h) ? 'search' : /^#\/project/.test(h) ? 'projects' : /^#\/tasks/.test(h) ? 'tasks' : '';
+  const h = location.hash || '#/home';
+  const on = /^#\/home/.test(h) ? 'home' : /^#\/works/.test(h) ? 'works' : /^#\/(lib|item)/.test(h) ? 'lib' : /^#\/search/.test(h) ? 'search' : /^#\/project/.test(h) ? 'projects'
+    : /^#\/tasks/.test(h) ? 'tasks' : /^#\/(settings|help)/.test(h) ? 'settings' : '';
   const active = S.jobs.filter(j => j.status === 'running' || j.status === 'queued').length;
-  const tab = ([k, i, n]) => `<a href="#/${k}" class="${on === k ? 'on' : ''}"><i>${ICON(i)}</i><span>${t(n)}</span>${k === 'tasks' && active ? `<span class="badge">${active}</span>` : ''}</a>`;
+  const tab = ([k, i, n, x]) => `<a href="#/${k}" class="${on === k ? 'on' : ''}${x ? ' x' : ''}"><i>${ICON(i)}</i><span>${t(n)}</span>${k === 'tasks' && active ? `<span class="badge">${active}</span>` : ''}</a>`;
+  const tb = $('#tasksBtn');
+  if (tb) { tb.innerHTML = `${ICON('clock')}${active ? `<span class="badge">${active}</span>` : ''}`; tb.classList.toggle('busy', !!active); tb.setAttribute('aria-label', t('tasks')); }
   const sig = on + '|' + active + '|' + LANG;
   if ($('#tabbar').dataset.sig === sig) return;
   $('#tabbar').dataset.sig = sig;
-  $('#tabbar').innerHTML = [['lib', 'library', 'library'], ['search', 'search', 'search']].map(tab).join('')
-    + `<button class="tadd" data-act="add" aria-label="${t('add')}">${ICON('plus')}</button>`
-    + [['projects', 'case', 'projects'], ['tasks', 'clock', 'tasks']].map(tab).join('');
+  $('#tabbar').innerHTML = [['home', 'sparkle', 'home'], ['lib', 'library', 'library']].map(tab).join('')
+    + `<button class="tadd" data-act="add" aria-label="${t('add')}">${ICON('plus')}<span>${t('add')}</span></button>`
+    + [['search', 'search', 'search'], ['projects', 'case', 'projects']].map(tab).join('')
+    + `<span class="xsep"></span>` + [['tasks', 'clock', 'tasks', 1], ['works', 'box', 'my_works', 1], ['settings', 'gear', 'settings', 1]].map(tab).join('');
 }
 const view = () => $('#view');
 
@@ -458,7 +465,7 @@ const IC = {
 };
 const PJADD = '<span class="pja">💼<i>+</i></span>';
 /* the six fonts: key -> [css family, Arabic name, English name, bold weight, heading weight, normal weight, kind] */
-const FONTS = { tajawal: ['Tajawal', 'تجوال', 'Tajawal', 500, 700, 400, 'm'], almarai: ['Almarai', 'المراعي', 'Almarai', 400, 700, 300, 'm'], plex: ['Plex', 'بلكس', 'IBM Plex', 600, 600, 400, 'm'],
+const FONTS = { tajawal: ['Tajawal', 'تجوال', 'Tajawal', 500, 700, 400, 'm'], almarai: ['Almarai', 'المراعي', 'Almarai', 700, 700, 400, 'm'], plex: ['Plex', 'بلكس', 'IBM Plex', 600, 600, 400, 'm'],
   amiri: ['Amiri', 'أميري', 'Amiri', 700, 700, 400, 't'], naskh: ['Naskh', 'نسخ (مثل لوتس)', 'Naskh (Lotus-like)', 700, 700, 400, 't'], scheherazade: ['Scheherazade', 'شهرزاد (تقليدي)', 'Scheherazade', 700, 700, 400, 't'] };
 const fstack = k => { const f = FONTS[k] || FONTS.tajawal; return `${f[0]},${f[6] === 't' ? '"Traditional Arabic",serif' : 'Tajawal,Plex,system-ui,sans-serif'}`; };
 const fontSeg = (name, val, attr) => `<div class="segc fontseg" ${attr}="${name}">${Object.entries(FONTS).map(([k, f]) => `<button type="button" data-v="${k}" class="${val === k ? 'on' : ''}" style="font-family:${f[0]};font-weight:${f[5]}">${LANG === 'ar' ? f[1] : f[2]}</button>`).join('')}</div>`;
@@ -597,7 +604,7 @@ function reminderHTML() {
 }
 function heroCard() {
   const pinned = S.items.filter(i => i.pinned).sort((a, b) => b.pinned - a.pinned)[0];
-  const it = pinned || S.items.find(i => i.id === store.get('last', null));
+  const it = pinned || S.items.find(i => i.id === store.get('last', null)) || S.items[0];
   if (!it) return '';
   const pos = store.get('pos.' + it.id, 0), d = it.duration || 0, left = d && pos ? Math.max(0, d - pos) : 0;
   const folder = S.folders.find(f => f.id === it.folder_id);
@@ -624,7 +631,7 @@ async function oldBox() {
 async function vLibrary() {
   await loadLib();
   const n = f => S.items.filter(i => f === 'all' ? true : f === 'none' ? !i.folder_id : i.folder_id === f).length;
-  view().innerHTML = `<div id="oldBox"></div>${heroCard()}${reminderHTML()}
+  view().innerHTML = `<div id="oldBox"></div>
     <div class="h"><h2>${t('library')}</h2><div class="grow"></div>
       <div class="segc viewsw"><button type="button" data-act="lib-view" data-v="grid" class="${store.get('libView', 'grid') === 'grid' ? 'on' : ''}" aria-label="grid">▦</button><button type="button" data-act="lib-view" data-v="list" class="${store.get('libView', 'grid') === 'list' ? 'on' : ''}" aria-label="list">☰</button></div>
       </div>
@@ -640,6 +647,46 @@ async function vLibrary() {
       : `<div class="empty"><div class="big">📚</div><h3>${t('empty_lib')}</h3><p>${t('empty_lib_p')}</p><button class="btn pri big" data-act="add">＋ ${t('add')}</button></div>`}
     ${fabHTML()}`;
   oldBox();
+}
+function workRow(w) {
+  const when = w.start != null && w.end ? `<button class="chip when" data-act="play-at" data-item="${w.item_id}" data-t="${w.start}">▶ ${rng(w.start, w.end)}</button>` : '';
+  return w.type === 'tr'
+    ? fileRow({ path: w.path || '', name: w.name, sub: esc(nice(w.item_title || '')), icon: IC.doc, noOpen: true, when, locked: w.locked,
+        tap: `data-act="open-tr" data-item="${w.item_id}" data-k="${w.id}"`,
+        btns: `<button class="ibtn" data-act="open-tr" data-item="${w.item_id}" data-k="${w.id}" aria-label="open">${IC.doc}</button><button class="ibtn" data-act="export-tr" data-tid="${w.id}" data-title="${esc(w.name)}" aria-label="export">📕</button>` })
+    : fileRow({ path: w.path, name: w.name, size: w.size, clip: true, sub: esc(nice(w.item_title || '')), when, locked: w.locked });
+}
+/* ================= home: what you are on, what is running, your latest works ================= */
+async function vHome() {
+  await loadLib();
+  const c = S.items.length ? await api('/api/folders/all/contents').catch(() => null) : null;
+  const works = (c && c.works || []).slice(0, 5);
+  const n = f => S.items.filter(i => f === 'all' ? true : f === 'none' ? !i.folder_id : i.folder_id === f).length;
+  view().innerHTML = `<div class="home">
+    <div class="hmain">
+      <form class="hsearch" id="hs" role="search"><input id="hq" dir="auto" placeholder="${t('home_search_ph')}" enterkeyhint="search" autocomplete="off" aria-label="${t('search')}"><button class="btn pri" aria-label="${t('search')}">${ICON('search')}</button></form>
+      ${heroCard() || `<button class="hero first" data-act="add"><div class="r"><div><b>${t('first_lesson')}</b><small>${t('first_lesson_p')}</small></div><span class="go">${ICON('plus')}</span></div></button>`}
+      <div class="sectitle">${ICON('clock')} ${t('now_running')}<a class="more" href="#/tasks">${t('tasks')}</a></div><div id="homeJobs"></div>
+      <div class="sectitle">${ICON('box')} ${t('recent_works')}<a class="more" href="#/works">${t('see_all')}</a></div>
+      ${works.length ? `<div class="card pad">${works.map(workRow).join('')}</div>` : `<p class="muted small hint">${t('works_empty')}</p>`}
+    </div>
+    <aside class="hside">
+      <div class="sectitle">${ICON('folders')} ${t('your_folders')}<a class="more" href="#/lib">${t('library')}</a></div>
+      <div class="folders">${folderCard('all', t('all_items'), '🗂️', '#4A5A66', n('all'))}${S.folders.slice(0, 7).map(f => folderCard(f.id, f.name, f.icon || '📁', f.color, n(f.id))).join('')}</div>
+      ${reminderHTML()}
+    </aside></div>${fabHTML()}`;
+  renderHomeJobs();
+  $('#hs').onsubmit = e => { e.preventDefault(); S.q = $('#hq').value.trim(); location.hash = '#/search'; };
+}
+function renderHomeJobs() {
+  const box = $('#homeJobs'); if (!box) return;
+  const now = S.jobs.filter(j => j.status !== 'done' && j.status !== 'cancelled').slice(0, 4);
+  const sig = now.map(j => j.id + j.status + Math.round((j.progress || 0) * 100) + (j.message || '')).join('|');
+  if (box.dataset.sig === sig) return;
+  box.dataset.sig = sig;
+  box.innerHTML = now.length ? `<div class="hjobs">${now.map(j => `<a class="hjob ${j.status}" href="#/tasks"><div class="jt"><b dir="auto" class="ell">${esc(nice(j.title))}</b><span class="st ${j.status}">${t('st_' + j.status)}</span></div>
+    ${j.status === 'running' || j.status === 'paused' ? `<div class="bar thin"><i style="width:${Math.round((j.progress || 0) * 100)}%"></i></div>` : ''}
+    <small class="muted ell" dir="auto">${esc(j.message || '')}${j.eta ? ' · ' + leftTxt(j) : ''}</small></a>`).join('')}</div>` : `<p class="muted small hint">${t('nothing_running')}</p>`;
 }
 async function vFolder(fid, tab, mine) {
   tab = tab || 'lessons';
@@ -671,17 +718,12 @@ async function vFolder(fid, tab, mine) {
   if (tab === 'works') {
     const ff = mine ? (S.wfold || 'all') : 'all', inF = w => { const it = S.items.find(i => i.id === w.item_id); return ff === 'all' || String(it ? it.folder_id || 'none' : 'none') === String(ff); };
     const ft = S.wf || 'all', ws = c.works.filter(w => (ft === 'all' || w.type === ft) && inF(w));
-    const when = w => w.start != null && w.end ? `<button class="chip when" data-act="play-at" data-item="${w.item_id}" data-t="${w.start}">▶ ${rng(w.start, w.end)}</button>` : '';
     const n = k => c.works.filter(w => (k === 'all' || w.type === k) && inF(w)).length;
     $('#fbody').innerHTML = `${mine ? '' : `<p class="muted small">${t('works_p')}</p>`}
       ${mine && S.folders.length ? `<div class="chips scroll" style="margin-bottom:10px">${[['all', t('all_items')], ...S.folders.map(f => [f.id, f.name]), ['none', t('unsorted')]].map(([k, l]) =>
         `<button class="chip ${String(ff) === String(k) ? 'on' : ''}" data-act="wfold" data-k="${k}"><span dir="auto">${esc(l)}</span></button>`).join('')}</div>` : ''}
       <div class="toolbar">${segc('wf', ft, [['all', `${t('w_all')} ${n('all')}`], ['tr', `📝 ${t('w_tr')} ${n('tr')}`], ['audio', `🎵 ${t('w_audio')} ${n('audio')}`], ['video', `🎬 ${t('w_video')} ${n('video')}`]], 'data-wf')}</div>
-      ${ws.length ? `<div class="card pad">${ws.map(w => w.type === 'tr'
-        ? fileRow({ path: w.path || '', name: w.name, sub: esc(nice(w.item_title || '')), icon: IC.doc, noOpen: true, when: when(w), locked: w.locked,
-            tap: `data-act="open-tr" data-item="${w.item_id}" data-k="${w.id}"`,
-            btns: `<button class="ibtn" data-act="open-tr" data-item="${w.item_id}" data-k="${w.id}" aria-label="open">${IC.doc}</button><button class="ibtn" data-act="export-tr" data-tid="${w.id}" data-title="${esc(w.name)}" aria-label="export">📕</button>` })
-        : fileRow({ path: w.path, name: w.name, size: w.size, clip: true, sub: esc(nice(w.item_title || '')), when: when(w), locked: w.locked })).join('')}</div>`
+      ${ws.length ? `<div class="card pad">${ws.map(workRow).join('')}</div>`
         : `<div class="empty"><div class="big">📦</div><p>${t('works_empty')}</p></div>`}`;
     $$('[data-wf] button').forEach(b => b.onclick = () => { S.wf = b.dataset.v; vFolder(fid, tab, mine); });
     return;
@@ -1518,6 +1560,7 @@ async function pollJobs() {
   if (fresh.length === 1) toast('✅ ' + nice(fresh[0].title));
   else if (fresh.length > 1) toast('✅ ' + fresh.length);
   if (/^#\/tasks/.test(location.hash)) renderJobs();
+  if (/^#\/home/.test(location.hash)) renderHomeJobs();
   if (S.item) {
     const mine = js.filter(j => j.item_id === S.item.id);
     const sig = mine.map(j => j.id + j.status + Math.round((j.progress || 0) * 20)).join('|');
@@ -1659,7 +1702,7 @@ async function playAt(itemId, at) {
   location.hash = `#/item/${itemId}/${at}`;
 }
 const ACT = {
-  back: () => history.length > 1 ? history.back() : (location.hash = '#/lib'),
+  back: () => history.length > 1 ? history.back() : (location.hash = '#/home'),
   add: () => addSheet(),
   'lan-new': async () => { lanShow(await post('/api/lan', { on: true, new_code: true })); toast(t('saved')); },
   'import-old': async () => { await post('/api/import-old'); oldBox(); },

@@ -9,7 +9,7 @@ const { chromium } = require('playwright');
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, colorScheme: scheme });
     const page = await ctx.newPage();
     page.on('pageerror', e => errors.push(scheme + ': ' + e.message));
-    for (const [name, hash] of [['library', '#/lib'], ['lesson', `#/item/${item}`], ['search', '#/search'], ['tasks', '#/tasks'], ['settings', '#/settings'], ['folder', '#/lib/f/1']]) {
+    for (const [name, hash] of [['home', '#/home'], ['library', '#/lib'], ['lesson', `#/item/${item}`], ['search', '#/search'], ['tasks', '#/tasks'], ['settings', '#/settings'], ['folder', '#/lib/f/1']]) {
       await page.goto(base + hash);
       await page.waitForTimeout(1300);
       await page.screenshot({ path: `${out}/${scheme}-${name}.png` });

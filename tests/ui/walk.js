@@ -13,10 +13,11 @@ const { chromium } = require('playwright');
   const closeSheet = async () => { await p.evaluate(() => { const d = document.getElementById('sheet'); if (d.open) d.close(); }); };
   const hideToast = () => p.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
 
+  await step('home', async () => { await p.goto(base + '#/home'); await p.waitForTimeout(1500); await hideToast(); await p.fill('#hq', 'الله'); await p.press('#hq', 'Enter'); await p.waitForTimeout(900); });
   await step('library', async () => { await p.goto(base + '#/lib'); await p.waitForTimeout(1500); await hideToast(); });
   await step('theme toggle', async () => { await p.click('#themeBtn'); await p.waitForTimeout(500); await p.click('#themeBtn'); });
   await step('list view', async () => { await p.click('[data-act=lib-view][data-v=list]'); await p.click('[data-act=lib-view][data-v=grid]'); });
-  await step('next reminder', async () => { await p.click('.rmd'); });
+  await step('next reminder', async () => { await p.goto(base + '#/home'); await p.waitForTimeout(800); await p.click('.rmd'); await p.goto(base + '#/lib'); await p.waitForTimeout(800); });
   await step('my works', async () => { await p.click('a.works'); await p.waitForTimeout(800); await p.click('[data-act=wfold] >> nth=1'); });
   await step('add sheet', async () => { await p.click('.tabbar .tadd'); await p.waitForTimeout(500); await p.click('#sheet .segc button >> nth=1'); await closeSheet(); });
   await step('folder', async () => { await p.goto(base + '#/lib/f/1'); await p.waitForTimeout(800); await p.click('[data-act=folder-menu]'); await p.waitForTimeout(300); await closeSheet();

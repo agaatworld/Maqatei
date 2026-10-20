@@ -352,3 +352,60 @@ img.logo{object-fit:cover;padding:0;background:none;box-shadow:0 6px 16px -8px r
 
 /* computers and tablets held sideways: the tabs are at the top, so the player sits at the very bottom */
 @media (min-width:900px){:root{--tabbar:0px}.dock,.mini{bottom:0;padding-bottom:10px}}
+
+/* ============ 5.0 «المجلس»: a home page, a side menu on computers, the geometric mark ============ */
+/* the tasks button in the top bar: the clock pulses while something runs */
+#tasksBtn .badge{position:absolute;top:-4px;inset-inline-end:-4px;background:var(--gold-hi);color:#1B2420;min-width:18px;height:18px;font-size:.68rem;border:2px solid var(--bg)}
+#tasksBtn.busy .ic{animation:tick 2.4s linear infinite}
+@keyframes tick{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+/* the tab bar: the add button in the middle; the extra links live only in the computer's side menu */
+.tabbar .tadd span,.tabbar .xsep,.tabbar a.x{display:none}
+.tabbar a i{position:relative}
+.tabbar a.on i::after{content:"";position:absolute;left:50%;bottom:-3px;width:5px;height:5px;border-radius:50%;background:var(--gold-hi);transform:translateX(-50%);animation:badge .3s var(--ease)}
+/* the first card: an eight-pointed star lattice, drawn faintly, like a mosque screen */
+.hero::before{content:"";position:absolute;inset:0;opacity:.13;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56' fill='none' stroke='white' stroke-width='1.1'%3E%3Crect x='17' y='17' width='22' height='22'/%3E%3Crect x='17' y='17' width='22' height='22' transform='rotate(45 28 28)'/%3E%3Ccircle cx='0' cy='0' r='4'/%3E%3Ccircle cx='56' cy='0' r='4'/%3E%3Ccircle cx='0' cy='56' r='4'/%3E%3Ccircle cx='56' cy='56' r='4'/%3E%3C/svg%3E") 0 0/56px 56px}
+.hero>*{position:relative}
+.hero.first{width:100%;border:0;font:inherit;text-align:start;cursor:pointer}
+.hero.first .go{background:rgba(255,255,255,.14);color:var(--gold-hi);display:grid}
+/* home */
+.hsearch{display:flex;gap:8px;margin:2px 0 14px}
+.hsearch input{flex:1;min-width:0;min-height:50px;border-radius:18px;border:1px solid var(--line);background:var(--card);padding:0 16px;font:inherit;font-size:1.02rem;color:var(--ink);box-shadow:var(--shadow)}
+.hsearch .btn{min-height:50px;width:54px;padding:0;border-radius:18px;flex:none}
+.hsearch .btn .ic{width:22px;height:22px}
+.sectitle .more{margin-inline-start:auto;font-size:.82rem;font-weight:500;color:var(--acc);text-decoration:none;padding:2px 8px;border-radius:8px}
+.sectitle .more:hover{background:var(--acc-soft)}
+.hint{margin:0 4px}
+.hjobs{display:flex;flex-direction:column;gap:8px}
+.hjob{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:16px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow);text-decoration:none;color:inherit}
+.hjob .jt{display:flex;align-items:center;gap:8px}.hjob .jt b{flex:1;min-width:0;font-weight:500;font-size:.95rem}
+.hjob .bar{margin:0;height:6px}
+.hjob.running .bar i{position:relative;overflow:hidden}
+.hjob.running .bar i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transform:translateX(-100%);animation:shine 1.6s infinite}
+.hjob small{font-size:.78rem}
+.hside .folders{margin-bottom:6px}
+/* computers: a side menu instead of the top tabs; the content and the player sit beside it */
+@media (min-width:1000px){
+  :root{--side:238px}
+  .tabbar{position:fixed;top:0;bottom:0;inset-inline-start:0;inset-inline-end:auto;width:var(--side);height:auto;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:3px;padding:16px 14px;padding-top:calc(16px + env(safe-area-inset-top));border:0;border-inline-end:1px solid var(--line);border-radius:0;background:var(--card);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;z-index:31;overflow-y:auto}
+  .tabbar a{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;height:46px;padding:0 12px;border-radius:14px;font-size:.98rem;font-weight:500;color:var(--muted)}
+  .tabbar a i{padding:0;background:none!important;animation:none!important;display:inline-flex}
+  .tabbar a i .ic{width:22px;height:22px}
+  .tabbar a.on{background:var(--acc-soft);color:var(--acc);font-weight:600}
+  .tabbar a.on i::after{display:none}
+  .tabbar a.x,.tabbar .xsep{display:flex}
+  .tabbar .xsep{height:1px;background:var(--line);margin:10px 6px}
+  .tabbar .tadd{width:auto;height:48px;margin:8px 0 10px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:10px;font:inherit;font-weight:600;font-size:1rem}
+  .tabbar .tadd span{display:inline}
+  .tabbar .tadd .ic{width:22px;height:22px}
+  .tabbar .tadd:active{transform:scale(.97)}
+  .tabbar a .badge{position:static;margin-inline-start:auto}
+  .tabbar::after{content:"بسم الله";margin-top:auto;padding:16px 10px 4px;font-family:Amiri,"Traditional Arabic",serif;font-size:1.05rem;color:var(--gold);text-align:center}
+  .top{margin-inline-start:var(--side)}
+  #setBtn,#tasksBtn{display:none}
+  .view{max-width:calc(var(--side) + 1180px);padding-inline-start:calc(var(--side) + 32px);padding-inline-end:32px}
+  .dock,.mini{inset-inline-start:var(--side)}
+  [dir=rtl] .toast{right:calc(var(--side) + 16px)}[dir=ltr] .toast{left:calc(var(--side) + 16px)}
+  .home{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:26px;align-items:start}
+  .hside{position:sticky;top:78px}
+  .hmain .sectitle:first-of-type{margin-top:22px}
+}
