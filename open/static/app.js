@@ -30,7 +30,7 @@ const TX = {
   links_hint_web: ['On the web version: YouTube links only, through free mirror servers (they are sometimes slow or down). Other sites need the Android or desktop app.', 'في نسخة الويب: روابط يوتيوب فقط، عبر خوادم وسيطة مجانية (تكون أحيانًا بطيئة أو معطّلة). المواقع الأخرى تحتاج تطبيق الأندرويد أو الكمبيوتر.'],
   choose_files: ['Choose from device', 'اختر من الجهاز'], drop: ['or drop files here', 'أو اسحب الملفات هنا'],
   into_folder: ['Save in folder', 'احفظ في مجلد'], uploading: ['Uploading… {0}%', 'جارٍ الرفع… {0}٪'],
-  added: ['Added ✓', 'أُضيف ✓'], no_links: ['Paste a link first', 'الصق رابطًا أولًا'], choose_first: ['Choose files first', 'اختر الملفات أولًا'],
+  added: ['Added ✓', 'أُضيف ✓'], no_links: ['Paste a link first', 'الصق رابطًا أولًا'], choose_first: ['Choose files first', 'اختر الملفات أولًا'], too_big_web: ['“{0}” is {1}. The web version keeps files inside the browser, so it can take up to about {2} per file. For a bigger lesson use the Android or desktop app, or make an audio-only (MP3) copy first.', '«{0}» حجمه {1}. نسخة الويب تحفظ الملفات داخل المتصفح، فتقبل حتى نحو {2} للملف الواحد. للدرس الأكبر استخدم تطبيق الأندرويد أو الكمبيوتر، أو اصنع نسخة صوتية (MP3) أولًا.'],
   add_how: ['Save the link as', 'احفظ الرابط كـ'], as_video: ['🎬 Video file', '🎬 ملف مرئي'], as_audio: ['🎧 Audio file', '🎧 ملف صوتي'], as_link: ['🔗 Link only', '🔗 رابط فقط'],
   add_how_p: ['Downloading first makes playing, cutting and transcribing fast and offline.', 'التنزيل أولًا يجعل التشغيل والقصّ والتفريغ سريعًا ويعمل دون إنترنت.'],
   // item
@@ -855,6 +855,7 @@ async function addSheet() {
             close('ok'); toast(t('added')); pollJobs(); location.hash = '#/item/' + r.ids[0];
           } else {
             if (!files.length) return toast(t('choose_first'));
+            if (IS_WEB) { const lim = /iPhone|iPad/.test(navigator.userAgent) ? 300e6 : 1500e6; const big = files.find(f => f.size > lim); if (big) return toast(t('too_big_web', big.name, size(big.size), size(lim)), null, 9000); }
             $('#addGo', d).disabled = true;
             const ids = await upload(files, fid, p => $('#upProg', d).textContent = t('uploading', Math.round(p * 100)));
             close('ok'); toast(t('added')); location.hash = '#/item/' + ids[0];

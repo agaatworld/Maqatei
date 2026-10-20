@@ -434,3 +434,8 @@ mark.hl{background:color-mix(in srgb,var(--gold-hi) 45%,transparent);color:inher
 .top,.tabbar,.pcard{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 .top{background:var(--bg)}.tabbar{background:var(--card)}.pcard{background:var(--card)}
 .view.enter,.view.enter *{animation:none!important;opacity:1}
+
+/* lesson tabs: one line each, whatever the font */
+.itabs button{white-space:nowrap;font-size:.84rem;padding:0 4px;gap:4px;min-width:0}
+.itabs button small{min-width:16px;height:16px;font-size:.66rem;padding:0 4px}
+@media (max-width:360px){.itabs button{font-size:.78rem}}
