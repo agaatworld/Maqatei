@@ -17,7 +17,7 @@ import java.net.URL
  * QuickJS that are packed inside this APK (from the youtubedl-android library). No Termux.
  */
 object Engine {
-    const val PORT = 8765
+    const val PORT = 8775          // not 8765: the old Termux version may still be running there
     const val BASE = "http://127.0.0.1:$PORT"
     private const val TAG = "MaqatiEngine"
 
@@ -200,7 +200,8 @@ object Engine {
         } finally { c.disconnect() }
     } catch (e: Exception) { null }
 
-    fun healthy(): Boolean = get("/api/health", 1500) != null
+    /** Our own engine answers (not the old Termux version, which also served Maqati on this phone). */
+    fun healthy(): Boolean = get("/api/health", 1500)?.contains("\"apk\": true") == true
 
     data class Work(val active: Int, val queued: Int, val title: String?, val progress: Double?, val message: String?)
 

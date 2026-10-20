@@ -1028,6 +1028,20 @@ def del_cookies(r):
     return {"ok": True}
 
 
+@route("GET", "/api/import-old")
+def import_old_status(r):
+    from . import importer
+    done = db.get_settings().get("imported_old")
+    return {"old": None if done or importer.STATE["running"] else importer.find_old(), "imported": bool(done),
+            "state": importer.STATE, "library": str(db.LIBRARY)}
+
+
+@route("POST", "/api/import-old")
+def import_old(r):
+    from . import importer
+    return importer.start()
+
+
 @route("GET", "/api/lan")
 def lan_status(r):
     return lan.status()

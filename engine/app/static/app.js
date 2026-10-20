@@ -133,6 +133,11 @@ const TX = {
   continue: ['Continue listening', 'أكمل الاستماع'],
   more_opts: ['More', 'المزيد'], my_works: ['My works', 'أعمالي'], my_works_s: ['Cuts & transcripts', 'المقاطع والتفريغات'],
   works_all_p: ['Every cut and transcript from all your lessons. Choose a folder or a type; tap one to play, save, rename, re-cut or add it to a project.', 'كل مقاطعك وتفريغاتك من كل الدروس. اختر مجلدًا أو نوعًا، واضغط أيًّا منها للتشغيل أو الحفظ أو إعادة التسمية أو القص أو إضافته لمشروع.'],
+  imp_found: ['Your {0} lessons from the old version ({1}) are still in Termux', 'دروسك القديمة ({0} درسًا) من النسخة {1} ما زالت في Termux'],
+  imp_p: ['Bring them here: parts, transcripts, notes and projects. Keep Termux until this is done.', 'انقلها إلى هنا بضغطة: المقاطع والتفريغات والفوائد والمشاريع. لا تحذف Termux قبل ذلك.'],
+  imp_noshare: ['First allow “All files” for Maqati in the phone settings, so the old files can be found.', 'اسمح أولًا لـ«مقاطع» بالوصول إلى جميع الملفات من إعدادات الهاتف، حتى تُوجد ملفاتك القديمة.'],
+  imp_go: ['Bring them', 'انقلها'], imp_busy: ['Bringing your lessons… {0} of {1}', 'ينقل دروسك… {0} من {1}'],
+  imp_done: ['{0} lessons brought over. You can now remove Termux and the old app.', 'نُقل {0} درسًا. يمكنك الآن حذف Termux والتطبيق القديم.'],
   t_now: ['Now', 'الحالية'], t_done: ['Finished', 'المنجزة'], no_done: ['Finished tasks appear here.', 'تظهر هنا المهام المنجزة.'],
   rmd_next: ['Next reminder', 'التذكير التالي'], s_rmd: ['Verses and hadiths banner (tap it for the next)', 'شريط الآيات والأحاديث (اضغطه للتالي)'], unlock_s: ['Unlock', 'فتح القفل'], unpin: ['Unpin', 'إلغاء التثبيت'], select: ['Select', 'تحديد'], note: ['Note', 'ملاحظة'], speed: ['Speed', 'السرعة'],
   sec_marks_s: ['Parts', 'المقاطع'], sec_tr_s: ['Transcript', 'التفريغ'], sec_notes_s: ['Benefits', 'الفوائد'], sec_files_s: ['Files', 'الملفات'],
@@ -593,10 +598,22 @@ function heroCard() {
       <button class="go" data-act="play-at" data-item="${it.id}" data-t="${pos || 0}" aria-label="${t('play')}">${ICON('play')}</button></div>
     ${d ? `<div class="pb"><i style="width:${Math.min(100, Math.round(pos / d * 100))}%"></i></div>` : ''}</a>`;
 }
+/* the lessons of the old (Termux) version: offer to bring them over while it is still running */
+async function oldBox() {
+  const box = $('#oldBox'); if (!box || IS_LAN) return;
+  let st; try { st = await api('/api/import-old'); } catch (e) { return; }
+  if (st.state.running) { box.innerHTML = `<div class="banner"><div class="grow minw"><b>${t('imp_busy', st.state.done, st.state.total)}</b><div class="bar"><i style="width:${st.state.total ? Math.round(st.state.done / st.state.total * 100) : 0}%"></i></div></div></div>`; setTimeout(oldBox, 1500); return; }
+  if (st.state.error) { box.innerHTML = `<div class="banner warn">⚠️ <span class="grow minw">${esc(st.state.error)}</span><button class="btn warn" data-act="import-old">${t('retry')}</button></div>`; return; }
+  if (st.imported && st.state.done) { box.innerHTML = `<div class="banner">✅ <b class="grow minw">${t('imp_done', st.state.done)}</b></div>`; st.state.done = 0; loadLib().then(() => { if (/^#\/lib$/.test(location.hash)) vLibrary(); }); return; }
+  if (!st.old) { box.innerHTML = ''; return; }
+  const shared = /\/storage\/emulated\/0\/Maqati$/.test(st.library);
+  box.innerHTML = `<div class="banner gold"><div class="grow minw"><b>📦 ${t('imp_found', st.old.items ?? '?', st.old.version || '3')}</b><small>${t(shared ? 'imp_p' : 'imp_noshare')}</small></div>
+    <button class="btn pri" data-act="import-old">${t('imp_go')}</button></div>`;
+}
 async function vLibrary() {
   await loadLib();
   const n = f => S.items.filter(i => f === 'all' ? true : f === 'none' ? !i.folder_id : i.folder_id === f).length;
-  view().innerHTML = `${heroCard()}${reminderHTML()}
+  view().innerHTML = `<div id="oldBox"></div>${heroCard()}${reminderHTML()}
     <div class="h"><h2>${t('library')}</h2><div class="grow"></div>
       <div class="segc viewsw"><button type="button" data-act="lib-view" data-v="grid" class="${store.get('libView', 'grid') === 'grid' ? 'on' : ''}" aria-label="grid">▦</button><button type="button" data-act="lib-view" data-v="list" class="${store.get('libView', 'grid') === 'list' ? 'on' : ''}" aria-label="list">☰</button></div>
       </div>
@@ -611,6 +628,7 @@ async function vLibrary() {
     ${S.items.length ? `<div class="sectitle">${t('recent')}</div><div class="list">${S.items.slice(0, 12).map(itemRow).join('')}</div>`
       : `<div class="empty"><div class="big">📚</div><h3>${t('empty_lib')}</h3><p>${t('empty_lib_p')}</p><button class="btn pri big" data-act="add">＋ ${t('add')}</button></div>`}
     ${fabHTML()}`;
+  oldBox();
 }
 async function vFolder(fid, tab, mine) {
   tab = tab || 'lessons';
@@ -1623,6 +1641,7 @@ const ACT = {
   back: () => history.length > 1 ? history.back() : (location.hash = '#/lib'),
   add: () => addSheet(),
   'lan-new': async () => { lanShow(await post('/api/lan', { on: true, new_code: true })); toast(t('saved')); },
+  'import-old': async () => { await post('/api/import-old'); oldBox(); },
   wfold: el => { S.wfold = el.dataset.k; vFolder('all', 'works', true); },
   'rmd-next': el => { const R = window.REMINDERS || []; const i = (store.get('rmi', 0) + 1) % R.length; store.set('rmi', i); store.set('rmt', Date.now());
     el.classList.add('out'); setTimeout(() => { const n = document.createElement('div'); n.innerHTML = reminderHTML(); el.replaceWith(n.firstElementChild); }, 180); },

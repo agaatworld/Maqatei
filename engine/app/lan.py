@@ -1,6 +1,6 @@
 """Open Maqati from an iPhone (or any phone, tablet or computer) on the same Wi-Fi.
 
-A second door on the home network (port 8766), separate from the app's own 127.0.0.1:8765. It asks for a
+A second door on the home network (port 8766), separate from the app's own 127.0.0.1:8775. It asks for a
 6-digit code once per device (kept in a cookie), so nobody else on the Wi-Fi can open your library."""
 import hashlib
 import os

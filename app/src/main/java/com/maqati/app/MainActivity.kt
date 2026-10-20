@@ -147,8 +147,26 @@ class MainActivity : AppCompatActivity() {
                 EngineService.start(this)
                 waitAndLoad()
                 Updater.checkOnLaunch(this)
+                offerRemoveOldApp()
             }
         }
+    }
+
+    private fun installed(pkg: String): Boolean = try { packageManager.getPackageInfo(pkg, 0); true } catch (e: Exception) { false }
+
+    /** The old Maqati (the window that opened the Termux version) has the same name and icon: offer to remove it. */
+    private fun offerRemoveOldApp() {
+        if (!installed("com.maqati.app")) return
+        val termux = installed("com.termux")
+        AlertDialog.Builder(this)
+            .setTitle("احذف «مقاطع» القديم")
+            .setMessage("ما زال تطبيق «مقاطع» القديم مثبتًا، وله نفس الاسم والأيقونة، فيفتح النسخة القديمة 3.6.1.\n\nاضغط «احذف القديم» ثم «موافق». دروسك في مجلد Maqati لا تُحذف." +
+                if (termux) "\n\nولم تعد تحتاج Termux: يمكنك حذفه أيضًا إن لم تستعمله لشيء آخر." else "")
+            .setPositiveButton("احذف القديم") { _, _ ->
+                try { startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:com.maqati.app"))) } catch (e: Exception) { }
+            }
+            .setNegativeButton("لاحقًا", null)
+            .show()
     }
 
     private fun ignoresBattery(): Boolean =
