@@ -11,3 +11,4 @@ dist/
 # iPhone (web) build output and its downloads
 site/
 web/.cache/
+apk/
