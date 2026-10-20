@@ -229,3 +229,49 @@ dialog.sheet::backdrop{background:rgba(8,14,12,.5);-webkit-backdrop-filter:blur(
 .lanbox .code{font-size:1.8rem;font-weight:600;letter-spacing:.25em;direction:ltr;color:var(--acc)}
 
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ---------- 4.1.1: a little smaller everywhere (the owner: "minimize sections, icons…") ---------- */
+html{font-size:calc(14.5px * var(--scale,1))}
+.top{padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top))}
+.top .ib{width:40px;height:40px;border-radius:12px}
+.top .ib .ic{width:19px;height:19px}
+.logo{width:38px;height:38px;border-radius:12px;font-size:1.3rem}
+.brand h1{font-size:1.12rem}
+.tabbar{height:60px;border-radius:22px}
+.tabbar a{height:50px;font-size:.7rem}
+.tabbar a i{padding:2px 12px}
+.tabbar a i .ic{width:21px;height:21px}
+.tabbar .tadd{width:48px;height:48px;border-radius:16px}
+.tabbar .tadd .ic{width:23px;height:23px}
+:root{--tabbar:76px}
+.h h2{font-size:1.3rem}
+.sectitle{font-size:.95rem;margin:20px 2px 10px}
+.hero{padding:14px 16px;gap:10px;border-radius:20px}
+.hero b{font-size:1.02rem}
+.hero .go{width:48px;height:48px}
+.hero .go .ic{width:20px;height:20px}
+.folders{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.fcard{min-height:0;padding:11px;gap:8px;border-radius:16px}
+.fcard .fi{width:34px;height:34px;border-radius:11px}
+.fcard .fi .ic{width:18px;height:18px}
+.fcard b{font-size:.94rem}
+.fcard small{font-size:.76rem}
+.frow2 .th{width:38px;height:38px}
+.li{padding:8px 10px;border-radius:16px;gap:10px}
+.th{width:54px;height:44px;border-radius:12px}
+.th .ic{width:19px;height:19px}
+.li .tt b{font-size:.95rem}
+.li .tt small{font-size:.78rem}
+.btn{min-height:40px;font-size:.93rem;padding:5px 12px}
+.btn.big{min-height:46px;font-size:.97rem}
+.chip{min-height:32px;font-size:.84rem}
+.sec{border-radius:18px;margin-top:10px}
+.sechead{min-height:48px;padding:10px 14px;font-size:.98rem;gap:10px}
+.sechead .ico{width:30px;height:30px;border-radius:10px}
+.sechead .ico .ic{width:17px;height:17px}
+.segc button{min-height:36px}
+.ftabs a{padding:8px 12px;font-size:.9rem}
+.job{padding:12px;border-radius:18px}
+.empty .big{width:76px;height:76px;border-radius:24px}
+.empty .big .ic{width:40px;height:40px}
+.search-big input{min-height:52px;font-size:1.02rem}
