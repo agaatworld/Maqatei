@@ -423,11 +423,13 @@ mark.hl{background:color-mix(in srgb,var(--gold-hi) 45%,transparent);color:inher
 #rmd .rmd .rt{font-size:.88rem;line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 #rmd .rmd small{font-size:.62rem}
 @media (min-width:1000px){
-  #rmd{position:fixed;inset-inline-end:18px;bottom:calc(var(--dock) + 22px);width:270px;max-width:none;margin:0;padding:0;z-index:5}
-  #rmd .rmd{margin:0;text-align:start;align-items:flex-start;background:color-mix(in srgb,var(--gold-hi) 7%,var(--card));box-shadow:var(--shadow)}
-  #rmd .rmd .rt{-webkit-line-clamp:4}
-  .view{padding-inline-end:310px}
+  /* on a computer the strip lives in the free middle of the top bar, one line, so the page keeps its whole width */
+  #rmd{position:fixed;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:min(620px,46vw);max-width:none;margin:0;padding:0;z-index:31}
+  #rmd .rmd{margin:0;padding:5px 12px;flex-direction:row;align-items:center;gap:10px;background:color-mix(in srgb,var(--gold-hi) 9%,var(--card));box-shadow:none}
+  #rmd .rmd .rt{-webkit-line-clamp:1;font-size:.9rem;line-height:1.6;flex:1;min-width:0}
+  #rmd .rmd small{white-space:nowrap}
   .home{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+}
 }
 /* ---------- no animation at all (the owner: it slows the computer down), and no blurred glass ---------- */
 *,*::before,*::after{animation:none!important;transition:none!important}
