@@ -1,0 +1,32 @@
+# After GitHub Pages publishes, open the live web version in a real browser and use it; screenshots and log go
+# to the "web-check" pre-release.
+name: Web check
+on:
+  workflow_run:
+    workflows: ["pages build and deployment"]
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: npm i --no-save playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: Use the live web version
+        run: |
+          mkdir -p out && ffmpeg -hide_banner -loglevel error -y -f lavfi -i "sine=frequency=440:duration=40" -ac 1 -b:a 64k out/test40.mp3
+          sleep 60   # let the new files reach GitHub's servers
+          node tests/web/live.js "$PWD/out" 2>&1 | tee out/log.txt
+          exit ${PIPESTATUS[0]}
+      - name: Save results
+        if: always()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          cd out && zip -q ../web-check.zip *.png log.txt; cd ..
+          gh release view web-check >/dev/null 2>&1 || gh release create web-check --prerelease -t "Web check" -n "Latest check of the web version"
+          gh release upload web-check web-check.zip --clobber
