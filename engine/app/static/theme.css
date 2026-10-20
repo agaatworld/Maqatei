@@ -322,3 +322,9 @@ html{font-size:calc(14.5px * var(--scale,1))}
 .mi.plain{padding:4px 0;min-height:0}.mi.plain:hover{background:none}
 .sb .btns.grid2{grid-template-columns:1fr 1fr}
 .sb .btns.grid2 .btn{min-height:46px;font-size:.9rem;white-space:normal}
+/* rewind / forward: a circular arrow with the seconds inside it */
+.ctl .ib{display:grid;place-items:center}
+.ctl .ib:not(.play) svg{width:30px;height:30px;stroke-width:1.7}
+.ctl .ib:not(.play) em{position:absolute;top:50%;left:50%;transform:translate(-50%,-44%);font-size:.6rem;font-weight:700;color:var(--ink);line-height:1}
+.ctl .ib em::after{content:''!important}
+.skflash svg{stroke-width:1.8}

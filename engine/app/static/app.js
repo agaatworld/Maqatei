@@ -428,8 +428,8 @@ setInterval(() => { if (PL.el && PL.item) store.set('pos.' + PL.item.id, PL.el.c
 const IC = {
   play: '<svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor" stroke="none"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><rect x="6.5" y="5" width="4" height="14" rx="1.2" fill="currentColor" stroke="none"/><rect x="13.5" y="5" width="4" height="14" rx="1.2" fill="currentColor" stroke="none"/></svg>',
-  back: '<svg viewBox="0 0 24 24"><path d="M10.5 4 5 8.5 10.5 13"/><path d="M5.5 8.5H13a6.5 6.5 0 1 1-6.4 7.7"/></svg>',
-  fwd: '<svg viewBox="0 0 24 24"><path d="M13.5 4 19 8.5 13.5 13"/><path d="M18.5 8.5H11a6.5 6.5 0 1 0 6.4 7.7"/></svg>',
+  back: '<svg viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3.5 8.5"/><path d="M3.5 3.5v5h5"/></svg>',
+  fwd: '<svg viewBox="0 0 24 24"><path d="M20.5 12a8.5 8.5 0 1 1-2.6-6.1l2.6 2.6"/><path d="M20.5 3.5v5h-5"/></svg>',
   bm: '<svg viewBox="0 0 24 24"><path d="M6.5 3.5h11a1 1 0 0 1 1 1v16l-6.5-4.2-6.5 4.2v-16a1 1 0 0 1 1-1z"/></svg>',
   start: '<svg viewBox="0 0 24 24"><path d="M5 21V4"/><path d="M5 4h11l-2.5 4L16 12H5" fill="currentColor" fill-opacity=".25"/></svg>',
   end: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" fill-opacity=".25"/></svg>',
@@ -546,7 +546,7 @@ function playerToolsHTML() {
   const it = PL.item; if (!it || !S.item || it.id !== S.item.id) return '';
   const vid = PL.isVideoFile(it), fine = store.get('fineOpen', false);
   return `<div class="ptools"><button class="chip" data-act="rate-next" aria-label="${t('speed')}"><bdi>${PL.rateV}×</bdi></button>
-    <button class="chip" data-act="skip-next" aria-label="${t('skip_by')}">⏩ <bdi>${skipS()}${LANG === 'ar' ? 'ث' : 's'}</bdi></button>
+    <button class="chip" data-act="skip-next" aria-label="${t('skip_by')}"><span class="noico icw">${IC.fwd.replace('<svg', '<svg class="ic"')}</span> <bdi>${skipS()}${LANG === 'ar' ? 'ث' : 's'}</bdi></button>
     <button class="chip ${fine ? 'on' : ''}" data-act="fine-toggle">±0.1</button>
     ${vid ? `<button class="chip" data-act="audio-only" aria-label="${t('audio_only')}">${PL.audioOnly ? '🎬' : '🎧'}</button>` : ''}
     ${vid && !PL.audioOnly ? `<button class="chip" data-act="fs" aria-label="${t('fullscreen')}">⛶</button>` : ''}</div>
