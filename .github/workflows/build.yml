@@ -25,7 +25,16 @@ jobs:
       - name: No test-only hacks left in the app (lesson from v3.3.0)
         run: "! grep -rn 'TEST ONLY\\|test-only\\|__test__' engine/app --include=*.py --include=*.js"
       - name: Transcription pipeline
-        run: python tests/test_transcribe_pipeline.py
+        run: |
+          set -o pipefail
+          python tests/test_transcribe_pipeline.py 2>&1 | tee engine-tests.log
+      - name: Share the test log on the ci-latest pre-release
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view ci-latest >/dev/null 2>&1 || gh release create ci-latest --prerelease --title "CI results (not an app release)" --notes "Screenshots and logs from the latest automatic test."
+          gh release upload ci-latest engine-tests.log --clobber
       - run: node --check engine/app/static/app.js
 
   apk:
@@ -41,7 +50,10 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - name: Build
-        run: ./gradlew assembleRelease assembleDebug --no-daemon --stacktrace
+        run: |
+          mkdir -p smoke-out
+          set -o pipefail
+          ./gradlew assembleRelease assembleDebug --no-daemon --stacktrace 2>&1 | tee smoke-out/gradle.log
       - name: Name the APKs
         run: |
           V=$(sed -n 's/VERSION = "\(.*\)"/\1/p' engine/app/version.py)
@@ -75,6 +87,16 @@ jobs:
         with:
           name: smoke-test
           path: smoke-out/
+      - name: Share test results (screenshots and logs) on the ci-latest pre-release
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd smoke-out && tail -c 400000 gradle.log > gradle-tail.log 2>/dev/null || true
+          zip -q -r ../ci-results.zip . -x gradle.log || true
+          cd ..
+          gh release view ci-latest >/dev/null 2>&1 || gh release create ci-latest --prerelease --title "CI results (not an app release)" --notes "Screenshots and logs from the latest automatic test."
+          gh release upload ci-latest ci-results.zip --clobber
       - name: Publish release (once per version)
         if: github.ref == 'refs/heads/main'
         env:
