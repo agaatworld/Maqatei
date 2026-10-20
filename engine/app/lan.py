@@ -22,15 +22,19 @@ OPEN = ("/lan-login", "/static/icon-192.png", "/static/icon-512.png", "/static/f
 
 
 def local_ip():
-    """This device's address on the Wi-Fi (no data is sent)."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        s.connect(("10.255.255.255", 1))
-        return s.getsockname()[0]
-    except OSError:
-        return None
-    finally:
-        s.close()
+    """This device's address on the Wi-Fi (no data is sent: a UDP "connect" only picks the route)."""
+    for target in ("10.255.255.255", "192.168.255.255", "8.8.8.8"):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect((target, 1))
+            ip = s.getsockname()[0]
+            if ip and not ip.startswith(("127.", "0.")):
+                return ip
+        except OSError:
+            pass
+        finally:
+            s.close()
+    return None
 
 
 def code():
