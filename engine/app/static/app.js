@@ -110,7 +110,7 @@ const TX = {
   st_running: ['running', 'يعمل'], st_queued: ['waiting', 'ينتظر'], st_paused: ['paused', 'متوقّف'], st_error: ['error', 'خطأ'], st_done: ['done ✓', 'اكتمل ✓'], st_cancelled: ['cancelled', 'أُلغي'],
   // settings
   s_lang: ['Language', 'اللغة'], s_look: ['Appearance', 'المظهر'], s_theme: ['Theme', 'السمة'], auto: ['Auto', 'تلقائي'], light: ['Light', 'فاتح'], dark: ['Dark', 'داكن'], sepia: ['Paper', 'ورقي'],
-  s_accent: ['Main color', 'اللون الرئيسي'], s_size: ['Text size', 'حجم الخط'], s_trsize: ['Transcript text size', 'حجم خط التفريغ'],
+  s_accent: ['Main color', 'اللون الرئيسي'], s_size: ['Text size', 'حجم الخط'], s_zoom: ['Display size (this device)', 'حجم الواجهة (لهذا الجهاز)'], z_auto: ['Fit screen', 'حسب الشاشة'], s_trsize: ['Transcript text size', 'حجم خط التفريغ'],
   s_tr: ['Transcription', 'التفريغ'], s_engine: ['Engine', 'المحرّك'], engine_groq: ['Groq — online, very fast and precise (free)', 'Groq — عبر الإنترنت، سريع ودقيق جدًا (مجاني)'],
   engine_local: ['Offline — on this device (much slower)', 'محلّي — على هذا الجهاز (أبطأ بكثير)'], s_key: ['Groq key', 'مفتاح Groq'],
   key_saved: ['Saved — paste a new one to replace', 'محفوظ — الصق مفتاحًا جديدًا للاستبدال'], key_hint: ['Free: console.groq.com/keys → sign in → Create API Key → paste here once.', 'مجانًا: console.groq.com/keys ← سجّل الدخول ← Create API Key ← الصقه هنا مرة واحدة.'],
@@ -269,6 +269,7 @@ function applyLook() {
   r.style.setProperty('--acc-ink', dark ? '#0E1513' : '#ffffff');
   r.style.setProperty('--acc-deep', `color-mix(in srgb, ${s.accent} ${dark ? 62 : 82}%, #061412)`);   // solid fills with white text
   r.style.setProperty('--scale', s.font_scale || 1);
+  fitZoom();
   r.style.setProperty('--trs', s.tr_scale || 1);
   $('meta[name=theme-color]').content = dark ? '#0E1513' : '#F6F3EC';
   const tb = $('#themeBtn'); if (tb) { tb.innerHTML = ICON(dark ? 'sun' : 'moon'); tb.setAttribute('aria-label', t(dark ? 'light' : 'dark')); }
@@ -276,6 +277,14 @@ function applyLook() {
   $('#backBtn').innerHTML = ICON(LANG === 'ar' ? 'chevR' : 'chevL');
   renderTabs();
 }
+/* the whole page bigger or smaller, chosen per device: phones as designed, wide computer screens larger */
+function fitZoom() {
+  const z = store.get('zoom', 'auto'), w = window.innerWidth;
+  const auto = w >= 1800 ? 1.35 : w >= 1400 ? 1.22 : w >= 1100 ? 1.12 : 1;
+  const v = z === 'auto' ? auto : +z || 1;
+  document.body.style.zoom = v === 1 ? '' : v;
+}
+window.addEventListener('resize', () => fitZoom());
 async function loadLib() { const st = await api('/api/state'); S.folders = st.folders; S.items = st.items; }
 
 /* ================= router ================= */
@@ -1543,6 +1552,7 @@ async function vSettings() {
     <div class="card pad"><h3>🎨 ${t('s_look')}</h3>
       <div class="field"><label>${t('s_theme')}</label>${sg('theme', s.theme || 'auto', [['auto', t('auto')], ['light', t('light')], ['dark', t('dark')], ['sepia', t('sepia')]])}</div>
       <div class="field"><label>${t('s_accent')}</label><div class="swatches">${COLORS.map(c => `<button type="button" data-accent="${c}" style="background:${c}" class="${c === s.accent ? 'on' : ''}"></button>`).join('')}</div></div>
+      <div class="field"><label>${t('s_zoom')}</label>${segc('zoom', store.get('zoom', 'auto'), [['auto', t('z_auto')], [0.9, '90%'], [1, '100%'], [1.15, '115%'], [1.3, '130%'], [1.5, '150%']], 'data-zoom')}</div>
       <div class="field"><label>${t('s_size')}</label>${sg('font_scale', s.font_scale || 1, [[0.92, t('small')], [1, t('medium')], [1.12, t('large')], [1.25, t('xlarge')]])}</div>
       <div class="field"><label>${t('s_trsize')}</label>${sg('tr_scale', s.tr_scale || 1, [[0.9, t('small')], [1, t('medium')], [1.2, t('large')], [1.4, t('xlarge')]])}</div></div>
     <div class="card pad"><h3>🔤 ${t('s_fonts')}</h3>
@@ -1899,6 +1909,7 @@ document.addEventListener('click', e => {
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-set] button'); if (b) { const k = b.closest('[data-set]').dataset.set; let v = b.dataset.v; if (/^[\d.]+$/.test(v)) v = +v;
     $$('button', b.parentElement).forEach(x => x.classList.toggle('on', x === b)); saveSet({ [k]: v }).then(() => { if (k === 'lang' || k === 'font_read') vSettings(); }); }
+  const z = e.target.closest('[data-zoom] button'); if (z) { $$('button', z.parentElement).forEach(x => x.classList.toggle('on', x === z)); store.set('zoom', z.dataset.v); fitZoom(); }
   const a = e.target.closest('[data-accent]'); if (a) { $$('[data-accent]').forEach(x => x.classList.toggle('on', x === a)); saveSet({ accent: a.dataset.accent }); }
 });
 function dhikrTick() {

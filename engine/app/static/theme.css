@@ -349,3 +349,6 @@ img.logo{object-fit:cover;padding:0;background:none;box-shadow:0 6px 16px -8px r
 .rmd{padding:8px 12px;margin:10px 0 2px}
 .rmd .rt{font-size:.94rem;line-height:1.75}
 .rmd small{font-size:.66rem}
+
+/* computers and tablets held sideways: the tabs are at the top, so the player sits at the very bottom */
+@media (min-width:900px){:root{--tabbar:0px}.dock,.mini{bottom:0;padding-bottom:10px}}
