@@ -9,7 +9,7 @@ const store = { get(k, d) { try { const v = localStorage.getItem('mq.' + k); ret
 
 /* ================= words (English / Arabic) ================= */
 const TX = {
-  app: ['Maqati', 'مقاطع'], tagline: ['clips · transcripts · benefits', 'مقاطع · تفريغ · فوائد'],
+  app: ['Maqati', 'مقاطع'], tagline: ['In the name of Allah', 'بسم الله'],
   library: ['Library', 'المكتبة'], search: ['Search', 'البحث'], projects: ['Projects', 'المشاريع'], tasks: ['Tasks', 'المهام'],
   settings: ['Settings', 'الإعدادات'], help: ['How to use', 'دليل الاستخدام'],
   all_items: ['All', 'الكل'], unsorted: ['Unsorted', 'غير مصنّف'], new_folder: ['New folder', 'مجلد جديد'],
@@ -601,10 +601,12 @@ function heroCard() {
 /* the lessons of the old (Termux) version: offer to bring them over while it is still running */
 async function oldBox() {
   const box = $('#oldBox'); if (!box || IS_LAN) return;
+  if (S.impDone) { box.innerHTML = `<div class="banner">✅ <b class="grow minw">${t('imp_done', S.impDone)}</b></div>`; S.impDone = 0; return; }
+  if (S.set.imported_old) return;                  // already brought over: nothing to ask the old version
   let st; try { st = await api('/api/import-old'); } catch (e) { return; }
   if (st.state.running) { box.innerHTML = `<div class="banner"><div class="grow minw"><b>${t('imp_busy', st.state.done, st.state.total)}</b><div class="bar"><i style="width:${st.state.total ? Math.round(st.state.done / st.state.total * 100) : 0}%"></i></div></div></div>`; setTimeout(oldBox, 1500); return; }
   if (st.state.error) { box.innerHTML = `<div class="banner warn">⚠️ <span class="grow minw">${esc(st.state.error)}</span><button class="btn warn" data-act="import-old">${t('retry')}</button></div>`; return; }
-  if (st.imported && st.state.done) { box.innerHTML = `<div class="banner">✅ <b class="grow minw">${t('imp_done', st.state.done)}</b></div>`; st.state.done = 0; loadLib().then(() => { if (/^#\/lib$/.test(location.hash)) vLibrary(); }); return; }
+  if (st.imported) { S.set.imported_old = true; if (st.just_done) { S.impDone = st.just_done; if (/^#\/lib$/.test(location.hash)) vLibrary(); } else box.innerHTML = ''; return; }
   if (!st.old) { box.innerHTML = ''; return; }
   const shared = /\/storage\/emulated\/0\/Maqati$/.test(st.library);
   box.innerHTML = `<div class="banner gold"><div class="grow minw"><b>📦 ${t('imp_found', st.old.items ?? '?', st.old.version || '3')}</b><small>${t(shared ? 'imp_p' : 'imp_noshare')}</small></div>
@@ -1504,7 +1506,7 @@ async function pollJobs() {
     const sig = mine.map(j => j.id + j.status + Math.round((j.progress || 0) * 20)).join('|');
     if (sig !== lastSig) { lastSig = sig; refreshItem({ keepTr: !fresh.some(j => j.kind === 'transcribe' && j.item_id === S.item.id), soft: true }); }
   }
-  const libDl = js.filter(j => ['fetch', 'info'].includes(j.kind) && j.status === 'running').map(j => j.id + ':' + Math.round((j.progress || 0) * 50)).join(',');
+  const libDl = js.filter(j => ['fetch', 'info'].includes(j.kind) && j.status === 'running').map(j => j.id + ':' + Math.round((j.progress || 0) * 10)).join(',');
   if (/^#\/lib/.test(location.hash) && !pollJobs.busy && (fresh.length || libDl !== pollJobs.libSig)) {
     pollJobs.libSig = libDl;
     const act = document.activeElement;

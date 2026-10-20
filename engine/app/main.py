@@ -1032,8 +1032,12 @@ def del_cookies(r):
 def import_old_status(r):
     from . import importer
     done = db.get_settings().get("imported_old")
-    return {"old": None if done or importer.STATE["running"] else importer.find_old(), "imported": bool(done),
-            "state": importer.STATE, "library": str(db.LIBRARY)}
+    just = importer.STATE["done"] if done and not importer.STATE["running"] else 0
+    out = {"old": None if done or importer.STATE["running"] else importer.find_old(), "imported": bool(done),
+           "state": dict(importer.STATE), "just_done": just, "library": str(db.LIBRARY)}
+    if just:
+        importer.STATE["done"] = 0            # the "brought over" message is shown once, not on every visit
+    return out
 
 
 @route("POST", "/api/import-old")
