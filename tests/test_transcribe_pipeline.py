@@ -44,12 +44,17 @@ def main():
                     f"aevalsrc=0.5*sin(2*PI*300*t)*lt(mod(t\\,{PERIOD})\\,{PERIOD - GAP}):s=16000:d=780",
                     "-ac", "1", "-b:a", "64k", str(audio)], check=True)
     env = {**os.environ, "MAQATI_DATA": str(tmp / "data"), "MAQATI_LIBRARY": str(tmp / "lib"), "MAQATI_OPEN": "0",
-           "MAQATI_PORT": str(APP), "MAQATI_GROQ_URL": f"http://127.0.0.1:{GROQ}/openai/v1/audio/transcriptions"}
+           "MAQATI_PORT": str(APP), "PYTHONPATH": str(ROOT / "engine" / "vendor"),   # the bundled requests, as on the phone
+           "MAQATI_GROQ_URL": f"http://127.0.0.1:{GROQ}/openai/v1/audio/transcriptions"}
     procs = [subprocess.Popen([sys.executable, str(ROOT / "tests" / "mock_groq.py"), str(GROQ)]),
              subprocess.Popen([sys.executable, "-m", "app.main"], cwd=ROOT / "engine", env=env,
                               stdout=subprocess.DEVNULL, stderr=open(tmp / "engine.log", "w"))]
     try:
-        wait(lambda: call("GET", "/api/health"))
+        def up():
+            if procs[1].poll() is not None:
+                raise SystemExit("engine stopped:\n" + (tmp / "engine.log").read_text()[-3000:])
+            return call("GET", "/api/health")
+        wait(up)
         call("POST", "/api/settings", {"groq_key": "test", "language": "ar", "prompt": "ابن تيمية، صحيح البخاري"})
         from urllib.parse import quote
         iid = call("POST", "/api/upload?name=" + quote(audio.name), raw=audio.read_bytes())["ids"][0]

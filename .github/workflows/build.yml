@@ -25,7 +25,7 @@ jobs:
       - name: No test-only hacks left in the app (lesson from v3.3.0)
         run: "! grep -rn 'TEST ONLY\\|test-only\\|__test__' engine/app --include=*.py --include=*.js"
       - name: Transcription pipeline
-        run: PYTHONPATH=engine/vendor python tests/test_transcribe_pipeline.py
+        run: python tests/test_transcribe_pipeline.py
       - run: node --check engine/app/static/app.js
 
   apk:
