@@ -343,3 +343,4 @@ html{font-size:calc(14.5px * var(--scale,1))}
 .ftabs a.on small{color:var(--acc)}
 .banner.gold{background:color-mix(in srgb,var(--gold-hi) 14%,var(--card));border:1px solid color-mix(in srgb,var(--gold-hi) 40%,var(--line))}
 .banner.gold small{color:var(--muted)}
+img.logo{object-fit:cover;padding:0;background:none;box-shadow:0 6px 16px -8px rgba(15,92,77,.7)}

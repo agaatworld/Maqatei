@@ -136,10 +136,10 @@ def login_page(wrong=False):
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="مقاطع">
 <link rel="apple-touch-icon" href="/static/icon-192.png"><link rel="stylesheet" href="/static/fonts.css">
 <style>body{{margin:0;min-height:100vh;display:grid;place-items:center;background:#F6F3EC;color:#1B2420;font:17px/1.7 Plex,system-ui,sans-serif;padding:24px;box-sizing:border-box}}
-.c{{width:100%;max-width:360px;text-align:center}}.l{{width:72px;height:72px;border-radius:22px;background:#10352E;color:#D6B46A;display:grid;place-items:center;margin:0 auto 16px;font:700 34px Amiri,serif}}
+.c{{width:100%;max-width:360px;text-align:center}}.l{{width:76px;height:76px;border-radius:22px;display:block;margin:0 auto 16px}}
 h1{{margin:0 0 6px;font-size:24px}}p{{margin:0 0 18px;color:#66706B}}input{{width:100%;box-sizing:border-box;height:64px;border-radius:18px;border:1px solid #E8E2D5;background:#fff;text-align:center;font-size:30px;letter-spacing:.3em;direction:ltr}}
 input:focus{{outline:0;border-color:#0F5C4D;box-shadow:0 0 0 4px rgba(15,92,77,.15)}}button{{width:100%;height:56px;margin-top:12px;border:0;border-radius:18px;background:#0F5C4D;color:#fff;font:inherit;font-weight:600}}
-.e{{color:#9E3B2C}}</style></head><body><form class="c" method="post" action="/lan-login"><div class="l">م</div>
+.e{{color:#9E3B2C}}</style></head><body><form class="c" method="post" action="/lan-login"><img class="l" src="/static/icon-192.png" alt="">
 <h1>مقاطع</h1><p>اكتب الرمز الظاهر في «مقاطع» على هاتفك (الإعدادات ← فتح من جهاز آخر).</p>{msg}
 <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" autofocus required>
 <button>دخول</button></form></body></html>"""

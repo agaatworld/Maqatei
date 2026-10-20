@@ -2,5 +2,6 @@
 <resources>
     <color name="bg">#F6F4EF</color>
     <color name="ink">#2B2B2B</color>
-    <color name="accent">#2F6F62</color>
+    <color name="accent">#0F5C4D</color>
+    <color name="ic_bg">#0F5C4D</color>
 </resources>
