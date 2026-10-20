@@ -1,0 +1,354 @@
+/* ============ Maqati 4.1 — the new look (loaded after style.css; later rules win) ============ */
+
+:root{
+  --bg:#F6F3EC; --bg2:#EEE9DE; --card:#FFFFFF; --ink:#1B2420; --muted:#66706B; --line:#E8E2D5;
+  --gold:#8A6A2B; --gold-soft:#F4EBD8; --gold-hi:#D6B46A; --danger:#9E3B2C; --ok:#2F6B55; --ok-soft:#E3EFEA;
+  --warn:#8A6A2B; --warn-soft:#F4EBD8;
+  --r:20px; --r-sm:14px;
+  --shadow:0 1px 2px rgba(27,36,32,.04),0 8px 24px -12px rgba(27,36,32,.16);
+  --lift:0 2px 4px rgba(27,36,32,.05),0 16px 32px -14px rgba(27,36,32,.28);
+  --ease:cubic-bezier(.2,.8,.2,1);
+  --tabbar:84px;
+}
+:root[data-theme="dark"]{--bg:#0E1513;--bg2:#17201D;--card:#151E1B;--ink:#E8ECE9;--muted:#93A09A;--line:#24302C;--gold:#D6B46A;--gold-soft:#262214;--danger:#E59A8C;--ok:#7FD1BC;--ok-soft:#14261F;--warn:#D6B46A;--warn-soft:#262214;--shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px -14px rgba(0,0,0,.6);--lift:0 2px 4px rgba(0,0,0,.4),0 18px 36px -14px rgba(0,0,0,.7)}
+:root[data-theme="sepia"]{--bg:#F1E7D3;--bg2:#E8DCC3;--card:#FBF5E9;--ink:#3B2F22;--muted:#7A6A57;--line:#E0D3BB}
+@media (prefers-color-scheme:dark){:root[data-theme="auto"]{--bg:#0E1513;--bg2:#17201D;--card:#151E1B;--ink:#E8ECE9;--muted:#93A09A;--line:#24302C;--gold:#D6B46A;--gold-soft:#262214;--danger:#E59A8C;--ok:#7FD1BC;--ok-soft:#14261F;--warn:#D6B46A;--warn-soft:#262214;--shadow:0 1px 2px rgba(0,0,0,.4),0 10px 28px -14px rgba(0,0,0,.6);--lift:0 2px 4px rgba(0,0,0,.4),0 18px 36px -14px rgba(0,0,0,.7)}}
+
+body{background:var(--bg);letter-spacing:0;-webkit-font-smoothing:antialiased;transition:background-color .3s var(--ease),color .3s var(--ease)}
+::selection{background:color-mix(in srgb,var(--gold-hi) 40%,transparent)}
+
+/* ---------- icons ---------- */
+.icw{display:inline-flex;align-items:center;justify-content:center;line-height:0;vertical-align:-.18em}
+.ic{width:1.15em;height:1.15em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn .ic,.chip .ic{width:1.1em;height:1.1em}
+.fi .ic,.th .ic,.sechead .ico .ic{width:22px;height:22px}
+.empty .big .ic{width:56px;height:56px;stroke-width:1.4;color:var(--acc);opacity:.85}
+.icons button .ic{width:24px;height:24px}
+.okc .ic{color:var(--ok)}
+
+/* ---------- top bar ---------- */
+.top{background:color-mix(in srgb,var(--bg) 82%,transparent);border-bottom:1px solid transparent;padding:10px 14px;padding-top:calc(10px + env(safe-area-inset-top));gap:8px;transition:border-color .2s,box-shadow .2s}
+.top.scrolled{border-bottom-color:var(--line);box-shadow:0 6px 20px -16px rgba(0,0,0,.35)}
+.logo{width:42px;height:42px;border-radius:14px;background:var(--acc-deep);color:var(--gold-hi);font-family:Amiri,serif;font-size:1.5rem;font-weight:700;box-shadow:0 6px 16px -8px color-mix(in srgb,var(--acc) 80%,transparent)}
+.brand h1{font-size:1.25rem;font-weight:600;letter-spacing:-.2px}
+.brand small{font-size:.76rem}
+.top .ib{width:44px;height:44px;border-radius:14px;background:var(--card);border:1px solid var(--line);font-size:1.15rem;color:var(--ink);transition:transform .15s var(--ease),background .2s}
+.top .ib:active{transform:scale(.92)}
+.top .ib .ic{width:21px;height:21px}
+#themeBtn .ic{transition:transform .5s var(--ease)}
+#themeBtn:active .ic{transform:rotate(-40deg)}
+
+/* ---------- floating tab bar with the add button in the middle ---------- */
+.tabbar{inset-inline:12px;bottom:calc(10px + env(safe-area-inset-bottom));height:66px;padding:0 6px;border-radius:24px;border:1px solid var(--line);background:color-mix(in srgb,var(--card) 92%,transparent);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);box-shadow:0 14px 34px -14px rgba(0,0,0,.35);align-items:center}
+.tabbar a{font-size:.74rem;font-weight:500;gap:2px;height:56px;border-radius:18px;transition:color .2s}
+.tabbar a i{font-size:1.25rem;padding:3px 14px;border-radius:12px;transition:background .25s var(--ease),transform .25s var(--ease)}
+.tabbar a i .ic{width:23px;height:23px}
+.tabbar a.on{color:var(--acc);font-weight:600}
+.tabbar a.on i{background:var(--acc-soft);animation:tabpop .35s var(--ease)}
+@keyframes tabpop{0%{transform:scale(.85)}60%{transform:scale(1.08)}100%{transform:none}}
+.tabbar .tadd{flex:none;width:54px;height:54px;margin:0 4px;border-radius:18px;border:0;background:var(--acc-deep);color:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 10px 22px -8px color-mix(in srgb,var(--acc-deep) 80%,transparent);transition:transform .15s var(--ease)}
+.tabbar .tadd:active{transform:scale(.9) rotate(90deg)}
+.tabbar .tadd .ic{width:26px;height:26px;stroke-width:2.3}
+.tabbar a .badge{top:2px;background:var(--gold-hi);color:#1B2420;animation:badge .4s var(--ease)}
+@keyframes badge{from{transform:scale(0)}to{transform:scale(1)}}
+.fab{display:none!important}
+.dock,.mini{bottom:calc(var(--tabbar) + env(safe-area-inset-bottom))}
+@media (min-width:900px){
+  .tabbar{inset-inline:0;bottom:auto;border-radius:0;border-width:0 0 1px;height:auto;box-shadow:none}
+  .tabbar a{height:auto}
+  .tabbar .tadd{width:44px;height:44px;border-radius:14px}
+}
+
+/* ---------- pages appear gently ---------- */
+.view.enter{animation:viewin .32s var(--ease)}
+@keyframes viewin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* the staggered entrance only plays when a page opens, never on the live refreshes that follow */
+.view.enter .list>.li,.view.enter .folders>*,.view.enter .job,.view.enter .sec,.view.enter .pclip,.view.enter .rescard{animation:rise .42s var(--ease) both}
+.view.enter .list>.li:nth-child(2),.view.enter .folders>*:nth-child(2),.view.enter .job:nth-child(2),.view.enter .sec:nth-child(2){animation-delay:.04s}
+.view.enter .list>.li:nth-child(3),.view.enter .folders>*:nth-child(3),.view.enter .job:nth-child(3),.view.enter .sec:nth-child(3){animation-delay:.08s}
+.view.enter .list>.li:nth-child(4),.view.enter .folders>*:nth-child(4),.view.enter .job:nth-child(4),.view.enter .sec:nth-child(4){animation-delay:.12s}
+.view.enter .list>.li:nth-child(5),.view.enter .folders>*:nth-child(5),.view.enter .job:nth-child(5),.view.enter .sec:nth-child(5){animation-delay:.16s}
+.view.enter .list>.li:nth-child(n+6),.view.enter .folders>*:nth-child(n+6),.view.enter .job:nth-child(n+6){animation-delay:.2s}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ---------- headings ---------- */
+.h{margin:6px 0 16px}
+.h h2{font-size:1.55rem;font-weight:600;letter-spacing:-.3px}
+.sectitle{font-size:1.02rem;font-weight:600;color:var(--ink);margin:26px 2px 12px;display:flex;align-items:center;gap:8px}
+.sectitle .ic{color:var(--gold)}
+.crumbs a{font-weight:500}
+
+/* ---------- buttons ---------- */
+.btn{border-radius:14px;border:1px solid var(--line);font-weight:500;transition:transform .12s var(--ease),background .2s,border-color .2s,box-shadow .2s}
+.btn:active{transform:scale(.96)}
+.btn.pri{box-shadow:0 8px 18px -10px color-mix(in srgb,var(--acc) 85%,transparent);font-weight:600}
+.btn.pri:hover{box-shadow:0 10px 22px -10px color-mix(in srgb,var(--acc) 95%,transparent)}
+.btn.soft{background:var(--acc-soft);color:var(--acc)}
+.btn.gold{background:var(--gold-soft);color:var(--gold)}
+.btn.big{min-height:52px;border-radius:16px;font-size:1.02rem}
+.ib:active{transform:scale(.9)}
+.chip{border-radius:999px;transition:background .2s,transform .12s}
+.chip:active{transform:scale(.95)}
+.chip.on{box-shadow:0 6px 14px -8px color-mix(in srgb,var(--acc) 90%,transparent)}
+
+/* ---------- cards ---------- */
+.card,.li,.fcard,.sec,.job,.pclip{border-color:var(--line);box-shadow:var(--shadow)}
+.li{border-radius:18px;padding:10px 12px;transition:transform .15s var(--ease),box-shadow .2s}
+.li:active{transform:scale(.985)}
+@media (hover:hover){.li:hover,.fcard:hover{box-shadow:var(--lift);transform:translateY(-1px)}}
+.th{width:64px;height:52px;border-radius:14px;background-color:var(--acc-deep);color:#fff;font-size:1.3rem}
+.th .ic{width:22px;height:22px}
+.th .now{background:var(--gold-hi);color:#1B2420;display:grid;place-items:center;padding:2px}
+.th .now .ic{width:13px;height:13px}
+.li .tt b{font-weight:500}
+.li .tt small{gap:12px}
+.li .tt small span{display:inline-flex;align-items:center;gap:4px}
+.fcard{border-radius:20px;padding:15px;gap:12px;min-height:118px;transition:transform .15s var(--ease),box-shadow .2s}
+.fcard .fi{width:44px;height:44px;border-radius:14px;color:var(--fc,var(--acc));background:color-mix(in srgb,var(--fc,var(--acc)) 14%,var(--card))}
+.fcard b{font-weight:600;font-size:1.04rem}
+.fcard.new{border:1.5px dashed var(--line)}
+.fcard.new .fi{background:var(--bg2);color:var(--muted)}
+.frow2 .th{color:var(--fc,var(--acc));background:color-mix(in srgb,var(--fc,var(--acc)) 14%,var(--card))}
+
+/* ---------- the library's first card: the lesson you are working on ---------- */
+.hero{position:relative;display:flex;flex-direction:column;gap:14px;padding:18px;border-radius:24px;background:var(--acc-deep,#10352E);color:#fff;text-decoration:none;margin-bottom:6px;overflow:hidden;box-shadow:0 20px 40px -22px color-mix(in srgb,var(--acc-deep) 90%,#000)}
+.view.enter .hero{animation:rise .45s var(--ease) both}
+.hero::after{content:"";position:absolute;inset-inline-end:-40px;top:-40px;width:160px;height:160px;border-radius:50%;border:1px solid rgba(255,255,255,.08);box-shadow:0 0 0 22px rgba(255,255,255,.03),0 0 0 48px rgba(255,255,255,.02);pointer-events:none}
+.hero .k{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;font-weight:500}
+.hero .k span:first-child{color:var(--gold-hi);display:inline-flex;align-items:center;gap:6px}
+.hero .k span:last-child{color:rgba(255,255,255,.72)}
+.hero .r{display:flex;align-items:center;gap:14px}
+.hero .r>div{flex:1;min-width:0}
+.hero b{display:block;font-size:1.12rem;font-weight:600;line-height:1.5}
+.hero small{color:rgba(255,255,255,.72);font-size:.84rem}
+.hero .go{width:58px;height:58px;flex:none;border-radius:50%;border:0;background:var(--gold-hi);color:#10221D;display:grid;place-items:center;cursor:pointer;box-shadow:0 10px 20px -10px rgba(0,0,0,.6);transition:transform .15s var(--ease)}
+.hero .go:active{transform:scale(.9)}
+.hero .go .ic{width:24px;height:24px;margin-left:3px}
+.hero .pb{height:4px;border-radius:4px;background:rgba(255,255,255,.18);overflow:hidden}
+.hero .pb i{display:block;height:100%;border-radius:4px;background:var(--gold-hi);transform-origin:right;animation:grow .9s var(--ease) both .15s}
+[dir=ltr] .hero .pb i{transform-origin:left}
+@keyframes grow{from{transform:scaleX(0)}to{transform:none}}
+
+/* ---------- lesson page ---------- */
+.titlebox .t{font-size:1.5rem;font-weight:600;letter-spacing:-.2px}
+.player{border-radius:22px}
+.player .art{background:var(--acc-deep);min-height:132px}
+.player .art i{border-radius:20px;background:rgba(255,255,255,.12);color:var(--gold-hi)}
+.player .art i .ic{width:32px;height:32px}
+.sec{border-radius:22px}
+.sechead{font-weight:600;min-height:58px;transition:background .2s}
+.sechead:active{background:var(--bg2)}
+.sechead .ico{color:var(--acc);border-radius:12px}
+.sechead .chev{transition:transform .3s var(--ease)}
+.sec.opening .secbody{animation:open .3s var(--ease)}
+@keyframes open{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.mark{border-radius:18px;background:var(--card);box-shadow:var(--shadow);transition:border-color .2s,box-shadow .2s}
+.mark.done{background:color-mix(in srgb,var(--ok) 7%,var(--card))}
+.mk{border-radius:16px;border:1px solid var(--line);background:var(--card);transition:transform .12s var(--ease),background .2s}
+.mk.main{box-shadow:0 8px 18px -10px color-mix(in srgb,var(--acc) 85%,transparent)}
+.mk.st svg{color:#2F8A5E}.mk.en svg{color:#B24A36}
+.ib.play{box-shadow:0 10px 24px -10px color-mix(in srgb,var(--acc) 90%,transparent);transition:transform .15s var(--ease)}
+.ib.play:active{transform:scale(.9)}
+.pcard{border-radius:24px;box-shadow:0 -10px 34px -16px rgba(0,0,0,.4)}
+.sk .fill{background:var(--acc)}
+.sk .knob{background:var(--gold-hi);border-color:var(--card)}
+.mks .rg{background:color-mix(in srgb,var(--gold-hi) 45%,transparent)}
+.mks .pt{background:var(--gold-hi)}
+.lockb.on{animation:pop .35s var(--ease)}
+@keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.15)}100%{transform:none}}
+
+/* transcript */
+.trbox{background:var(--bg);border-radius:18px}
+.seg{border-radius:14px;transition:background .35s var(--ease),box-shadow .35s var(--ease)}
+.seg .tm{background:transparent;color:var(--muted);padding:0;margin-top:9px;font-size:.74rem}
+.seg.now{background:color-mix(in srgb,var(--acc) 9%,var(--card));box-shadow:inset -3px 0 0 var(--acc)}
+[dir=ltr] .seg.now{box-shadow:inset 3px 0 0 var(--acc)}
+.seg.now .tm{color:var(--acc);font-weight:600}
+.trpick{border-radius:16px;border:1px solid var(--acc-line)}
+
+/* ---------- segmented controls & tabs ---------- */
+.segc{border-radius:16px;background:var(--bg2)}
+.segc button{border-radius:12px;font-weight:500;transition:background .25s var(--ease),color .2s,box-shadow .25s}
+.segc button.on{font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08),0 4px 10px -6px rgba(0,0,0,.2)}
+.ftabs{background:var(--bg2);padding:4px;border-radius:16px;gap:4px}
+.ftabs a{background:transparent;border-radius:12px;padding:10px 14px;font-weight:500;transition:background .25s var(--ease),color .2s}
+.ftabs a.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* ---------- sheets ---------- */
+dialog.sheet{border-radius:28px;background:var(--card)}
+dialog.sheet[open]{animation:sheetin .38s var(--ease)}
+dialog.sheet[open]::backdrop{animation:fade .3s ease}
+@keyframes sheetin{from{opacity:0;transform:translateY(40px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+dialog.sheet::backdrop{background:rgba(8,14,12,.5);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+@media (max-width:640px){dialog.sheet{border-radius:28px 28px 0 0}}
+.sh b{font-size:1.22rem;font-weight:600;display:flex;align-items:center;gap:8px}
+.sh b .ic{color:var(--gold)}
+.field>label{font-weight:500;color:var(--muted);font-size:.92rem}
+.field input:not([type=checkbox]):not([type=radio]):not([type=color]),.field select,.field textarea,.btns input,select.input,.input{border-radius:14px;background:var(--bg);border:1px solid var(--line);transition:border-color .2s,box-shadow .2s}
+.input:focus,textarea:focus,select:focus,input:focus{outline:0;border-color:var(--acc)!important;box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 16%,transparent)}
+.fmtcards button{border-radius:18px;border:1.5px solid var(--line);transition:border-color .2s,background .2s,transform .12s}
+.fmtcards button:active{transform:scale(.96)}
+.fmtcards button i .ic{width:28px;height:28px}
+.sw input{transition:background .25s var(--ease)}
+.sw input::after{transition:inset-inline-start .25s var(--ease)}
+.qmenu{border-radius:18px}
+
+/* ---------- tasks ---------- */
+.job{border-radius:20px}
+.job .msg{font-size:.88rem}
+.st{border-radius:999px;font-weight:600;font-size:.76rem}
+.bar{height:7px;border-radius:7px}
+.job.running .bar i,.bar.thin i{position:relative;overflow:hidden}
+.job.running .bar i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transform:translateX(-100%);animation:shine 1.6s infinite}
+@keyframes shine{to{transform:translateX(100%)}}
+
+/* ---------- search ---------- */
+.search-big input{min-height:60px;border-radius:20px;font-size:1.12rem;box-shadow:var(--shadow);background:var(--card)}
+.search-big::before{content:"";width:22px;height:22px;opacity:.55;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M20 20l-4.2-4.2'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='6.5'/%3E%3Cpath d='M20 20l-4.2-4.2'/%3E%3C/svg%3E") center/contain no-repeat}
+.hl{background:color-mix(in srgb,var(--gold-hi) 38%,transparent)}
+
+/* ---------- toast ---------- */
+.toast{left:16px;right:16px;transform:none;margin:0 auto;width:fit-content;max-width:min(560px,calc(100vw - 32px));border-radius:18px;padding:13px 18px;line-height:1.6;box-shadow:0 16px 36px -14px rgba(0,0,0,.5)}
+.toast:not([hidden]){animation:toastin .32s var(--ease)}
+@keyframes toastin{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+.toast button{color:var(--gold-hi);white-space:nowrap;flex:none}
+:root:not(.isdark) .toast button{color:#E3C68B}
+
+/* ---------- empty states ---------- */
+.empty{padding:48px 20px}
+.empty .big{display:grid;place-items:center;width:96px;height:96px;margin:0 auto 14px;border-radius:30px;background:var(--acc-soft);animation:float 4s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-6px)}}
+.empty h3{font-weight:600;font-size:1.15rem}
+
+/* ---------- iPhone / other device card ---------- */
+.lanbox{display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px;border-radius:18px;background:var(--bg);text-align:center}
+.lanbox .qr{background:#fff;padding:10px;border-radius:14px;line-height:0}
+.lanbox .qr svg{width:180px;height:180px}
+.lanbox .addr{font-size:1.15rem;font-weight:600;direction:ltr;user-select:all}
+.lanbox .code{font-size:1.8rem;font-weight:600;letter-spacing:.25em;direction:ltr;color:var(--acc)}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ---------- 4.1.1: a little smaller everywhere (the owner: "minimize sections, icons…") ---------- */
+html{font-size:calc(14.5px * var(--scale,1))}
+.top{padding:8px 12px;padding-top:calc(8px + env(safe-area-inset-top))}
+.top .ib{width:40px;height:40px;border-radius:12px}
+.top .ib .ic{width:19px;height:19px}
+.logo{width:38px;height:38px;border-radius:12px;font-size:1.3rem}
+.brand h1{font-size:1.12rem}
+.tabbar{height:60px;border-radius:22px}
+.tabbar a{height:50px;font-size:.7rem}
+.tabbar a i{padding:2px 12px}
+.tabbar a i .ic{width:21px;height:21px}
+.tabbar .tadd{width:48px;height:48px;border-radius:16px}
+.tabbar .tadd .ic{width:23px;height:23px}
+:root{--tabbar:76px}
+.h h2{font-size:1.3rem}
+.sectitle{font-size:.95rem;margin:20px 2px 10px}
+.hero{padding:14px 16px;gap:10px;border-radius:20px}
+.hero b{font-size:1.02rem}
+.hero .go{width:48px;height:48px}
+.hero .go .ic{width:20px;height:20px}
+.folders{grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.fcard{min-height:0;padding:11px;gap:8px;border-radius:16px}
+.fcard .fi{width:34px;height:34px;border-radius:11px}
+.fcard .fi .ic{width:18px;height:18px}
+.fcard b{font-size:.94rem}
+.fcard small{font-size:.76rem}
+.frow2 .th{width:38px;height:38px}
+.li{padding:8px 10px;border-radius:16px;gap:10px}
+.th{width:54px;height:44px;border-radius:12px}
+.th .ic{width:19px;height:19px}
+.li .tt b{font-size:.95rem}
+.li .tt small{font-size:.78rem}
+.btn{min-height:40px;font-size:.93rem;padding:5px 12px}
+.btn.big{min-height:46px;font-size:.97rem}
+.chip{min-height:32px;font-size:.84rem}
+.sec{border-radius:18px;margin-top:10px}
+.sechead{min-height:48px;padding:10px 14px;font-size:.98rem;gap:10px}
+.sechead .ico{width:30px;height:30px;border-radius:10px}
+.sechead .ico .ic{width:17px;height:17px}
+.segc button{min-height:36px}
+.ftabs a{padding:8px 12px;font-size:.9rem}
+.job{padding:12px;border-radius:18px}
+.empty .big{width:76px;height:76px;border-radius:24px}
+.empty .big .ic{width:40px;height:40px}
+.search-big input{min-height:52px;font-size:1.02rem}
+
+/* ---------- 4.1.1: calmer screens — the essentials in view, the rest behind ⋯ ---------- */
+.itemhead{align-items:flex-start;gap:6px}
+.ib.more{width:40px;height:40px;border-radius:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);flex:none}
+.ib.more .ic{width:20px;height:20px}
+.titlebox .t{cursor:pointer}
+.titlebox .meta{align-items:center;gap:8px;margin-top:6px}
+.mtx{font-size:.82rem;color:var(--muted);display:inline-flex;align-items:center;gap:4px}
+.mtx.gold{color:var(--gold)}
+.ptools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.ptools .chip{min-height:34px;padding:2px 12px}
+#pl-tools .fine{margin:8px 0 0}
+/* tabs instead of long open/close sections */
+.itabs{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:16px;background:var(--bg2);margin:12px 0 4px;position:sticky;top:calc(60px + env(safe-area-inset-top));z-index:6}
+.itabs button{min-height:38px;border:0;border-radius:12px;background:transparent;color:var(--muted);font:inherit;font-size:.88rem;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;transition:background .25s var(--ease),color .2s}
+.itabs button small{font-size:.7rem;min-width:18px;height:18px;border-radius:9px;background:color-mix(in srgb,var(--ink) 8%,transparent);display:inline-grid;place-items:center;padding:0 5px}
+.itabs button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.itabs button.on small{background:var(--acc-soft);color:var(--acc)}
+#secs .sec{display:none;background:transparent;border:0;box-shadow:none;margin-top:6px;overflow:visible}
+#secs .sec.show{display:block;animation:open .28s var(--ease)}
+#secs .secbody{padding:0}
+.sectop{display:flex;align-items:center;gap:8px;margin:12px 2px 6px;font-size:.95rem}
+.sectop .ico{color:var(--acc);display:inline-flex}.sectop .n{font-size:.75rem;color:var(--muted)}
+.sec[data-sec=marks] .sectop,.sec[data-sec=tr] .sectop,.sec[data-sec=files] .sectop{display:none}
+/* a part */
+.mark{padding:10px 12px;margin-top:8px}
+.mark .r1{align-items:flex-start}
+.mark .mt{flex:1;min-width:0;display:flex;flex-direction:column;gap:0}
+.mark input.nm{min-height:38px;font-size:.98rem;padding:4px 6px;margin-inline-start:-6px}
+.mtime{align-self:flex-start;border:0;background:none;padding:0 0 2px;color:var(--muted);font:inherit;font-size:.8rem;cursor:pointer;font-variant-numeric:tabular-nums}
+.mtime:active{color:var(--acc)}
+.mbar{display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.mbar .btn{min-height:38px;padding:4px 10px;font-size:.88rem}
+.mbar .btn.icon{width:40px;padding:0;flex:none}
+.mbar .btn.icon .ic{width:18px;height:18px}
+.mbar .split .qdd{min-width:30px;padding:4px 6px}
+.mark .lockrow{margin-top:8px}
+.mark>.btn.wide{margin-top:8px;min-height:38px}
+/* the ⋯ menus */
+.menu{display:flex;flex-direction:column;gap:2px;margin-bottom:6px}
+.mi{display:flex;align-items:center;gap:12px;width:100%;min-height:50px;padding:6px 12px;border:0;border-radius:14px;background:transparent;color:var(--ink);font:inherit;font-size:1rem;text-align:start;text-decoration:none;cursor:pointer;transition:background .15s}
+.mi:active,.mi:hover{background:var(--bg2)}
+.mi .ic{width:20px;height:20px;color:var(--acc)}
+.mi.danger,.mi.danger .ic{color:var(--danger)}
+.mi.plain{padding:4px 0;min-height:0}.mi.plain:hover{background:none}
+.sb .btns.grid2{grid-template-columns:1fr 1fr}
+.sb .btns.grid2 .btn{min-height:46px;font-size:.9rem;white-space:normal}
+/* rewind / forward: a circular arrow with the seconds inside it */
+.ctl .ib{display:grid;place-items:center}
+.ctl .ib:not(.play) svg{width:30px;height:30px;stroke-width:1.7}
+.ctl .ib:not(.play) em{position:absolute;top:50%;left:50%;transform:translate(-50%,-44%);font-size:.6rem;font-weight:700;color:var(--ink);line-height:1}
+.ctl .ib em::after{content:''!important}
+.skflash svg{stroke-width:1.8}
+
+/* ---------- reminders: one small banner of a verse or a hadith ---------- */
+.rmd{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;margin:12px 0 4px;padding:10px 14px;border-radius:16px;border:1px solid color-mix(in srgb,var(--gold-hi) 35%,var(--line));background:color-mix(in srgb,var(--gold-hi) 9%,var(--card));color:var(--ink);font:inherit;text-align:center;cursor:pointer;transition:opacity .18s,transform .18s var(--ease)}
+.rmd .rt{font-family:Amiri,"Traditional Arabic",serif;font-size:1.08rem;line-height:1.9}
+.rmd.q .rt{color:color-mix(in srgb,var(--ink) 88%,var(--gold))}
+.rmd small{font-size:.72rem;color:var(--gold)}
+.rmd:active{transform:scale(.98)}
+.rmd.out{opacity:0;transform:translateY(-4px)}
+.view.enter .rmd{animation:rise .5s var(--ease) both .1s}
+/* My works card and the small counts on tabs */
+.fcard.works .fi{color:var(--gold);background:color-mix(in srgb,var(--gold-hi) 18%,var(--card))}
+.ftabs a small{font-size:.72rem;color:var(--muted);margin-inline-start:4px}
+.ftabs a.on small{color:var(--acc)}
+.banner.gold{background:color-mix(in srgb,var(--gold-hi) 14%,var(--card));border:1px solid color-mix(in srgb,var(--gold-hi) 40%,var(--line))}
+.banner.gold small{color:var(--muted)}
+img.logo{object-fit:cover;padding:0;background:none;box-shadow:0 6px 16px -8px rgba(15,92,77,.7)}
+#appSub{font-family:Amiri,"Traditional Arabic",serif;font-size:.86rem;color:var(--gold)}
+/* the verse / hadith banner: a little smaller */
+.rmd{padding:8px 12px;margin:10px 0 2px}
+.rmd .rt{font-size:.94rem;line-height:1.75}
+.rmd small{font-size:.66rem}
+
+/* computers and tablets held sideways: the tabs are at the top, so the player sits at the very bottom */
+@media (min-width:900px){:root{--tabbar:0px}.dock,.mini{bottom:0;padding-bottom:10px}}

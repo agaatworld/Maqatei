@@ -1,9 +1,10 @@
 """Builds the iPhone version (a web app) into site/: the normal Maqati screens and engine, plus Pyodide (Python in
-the browser) and ffmpeg.wasm. GitHub Pages publishes site/ (see .github/workflows/web.yml).
+the browser) and ffmpeg.wasm. It is kept in app/ on the main branch, which GitHub Pages publishes: https://beaconcrest8.github.io/maqati/app/
 
-    python3 web/build.py [site_dir]
+    python3 web/build.py [out_dir]     (default: app/)
 
 Downloaded packages are kept in web/.cache (or $WEB_CACHE)."""
+import hashlib
 import io
 import json
 import os
@@ -18,7 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 APP = ROOT / "engine" / "app"
-OUT = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "site").resolve()
+OUT = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "app").resolve()
 CACHE = Path(os.environ.get("WEB_CACHE") or HERE / ".cache")
 
 PYODIDE = "0.27.7"
@@ -30,6 +31,7 @@ GET = {
     "ffmpeg.tgz": f"https://registry.npmjs.org/@ffmpeg/ffmpeg/-/ffmpeg-{FF}.tgz",
     "ffmpeg-core.tgz": f"https://registry.npmjs.org/@ffmpeg/core/-/core-{FF_CORE}.tgz",
 }
+FIXED = (2020, 1, 1, 0, 0, 0)
 PY_FILES = ("pyodide.js", "pyodide.asm.js", "pyodide.asm.wasm", "python_stdlib.zip", "pyodide-lock.json")
 # absolute addresses of the normal app become relative, so the app works from any folder (github.io/maqati/)
 ABS = re.compile(r"""(['"`(=])/(api|static|media|export)(?=[/?'"`])""")
@@ -60,7 +62,11 @@ def rel(text):
 def main():
     sys.path.insert(0, str(ROOT / "engine"))
     from app.version import VERSION
-    stamp = VERSION + "-" + str(int(max(p.stat().st_mtime for p in list(APP.rglob("*")) + list(HERE.glob("*.*")))))
+    h = hashlib.sha256()                       # the same sources always give the same files (no needless changes)
+    for p in sorted([*APP.rglob("*"), *HERE.glob("*.*")]):
+        if p.is_file() and "__pycache__" not in p.parts:
+            h.update(p.relative_to(ROOT).as_posix().encode() + p.read_bytes())
+    stamp = VERSION + "-" + h.hexdigest()[:8]
     if OUT.exists():
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
@@ -90,13 +96,13 @@ def main():
     # the engine (Python files only; the screens are served above)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in sorted(APP.rglob("*.py")):
+        for f in sorted(p for p in APP.rglob("*.py") if "__pycache__" not in p.parts):
             text = f.read_text(encoding="utf-8")
             if f.name == "export.py":
                 text = rel(text)
-            z.writestr("app/" + f.relative_to(APP).as_posix(), text)
+            z.writestr(zipfile.ZipInfo("app/" + f.relative_to(APP).as_posix(), FIXED), text)
         for f in sorted((ROOT / "engine" / "vendor" / "qrcode").rglob("*.py")):
-            z.writestr(f.relative_to(ROOT / "engine" / "vendor").as_posix(), f.read_bytes())
+            z.writestr(zipfile.ZipInfo(f.relative_to(ROOT / "engine" / "vendor").as_posix(), FIXED), f.read_bytes())
     (OUT / "engine.zip").write_bytes(buf.getvalue())
 
     # Python and ffmpeg for the browser

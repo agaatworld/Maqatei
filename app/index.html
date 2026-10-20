@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مقاطع</title>
+<link rel="icon" href="static/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#F6F3EC">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="مقاطع">
+<link rel="apple-touch-icon" href="static/icon-192.png">
+<link rel="stylesheet" href="static/fonts.css?v=4.2.1-dcccf4f4">
+<link rel="stylesheet" href="static/style.css?v=4.2.1-dcccf4f4">
+<link rel="stylesheet" href="static/theme.css?v=4.2.1-dcccf4f4">
+</head>
+<body>
+<div id="boot"><img src="static/icon-192.png" alt=""><b>مقاطع</b><span id="bootMsg">جارٍ التحميل…</span><i></i></div>
+<style>
+#boot{position:fixed;inset:0;z-index:999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#F6F3EC;color:#0F5C4D;font:600 17px system-ui,sans-serif;transition:opacity .35s}
+#boot img{width:84px;height:84px;border-radius:22px;box-shadow:0 8px 24px rgba(15,92,77,.25)}#boot b{font-size:24px}
+#boot span{color:#5d6b66;font-weight:500;text-align:center;padding:0 24px}
+#boot i{width:120px;height:4px;border-radius:4px;background:linear-gradient(90deg,#0F5C4D 0 30%,#e4ddcc 30%);background-size:200% 100%;animation:bootbar 1.1s linear infinite}
+#boot.gone{opacity:0;pointer-events:none}
+@keyframes bootbar{from{background-position:100% 0}to{background-position:-100% 0}}
+@media (prefers-color-scheme:dark){#boot{background:#0f1513;color:#D6B46A}#boot span{color:#a6b2ad}}
+</style>
+<script>window.MQ_V = '4.2.1-dcccf4f4';</script>
+<script src="py/pyodide.js"></script>
+<script src="boot.js"></script>
+
+<header class="top">
+  <button class="ib" id="backBtn" data-act="back" hidden aria-label="Back">→</button>
+  <a class="brand" href="#/lib"><img class="logo" src="static/icon-192.png" alt=""><div class="minw"><h1 id="appName">مقاطع</h1><small id="appSub"></small></div></a>
+  <div class="grow"></div>
+  <button class="ib" id="themeBtn" data-act="theme-toggle" aria-label="Theme"></button>
+  <a class="ib" href="#/settings" id="setBtn" aria-label="Settings">⚙️</a>
+</header>
+<nav class="tabbar" id="tabbar"></nav>
+<main class="view" id="view"></main>
+
+<!-- the player lives here and survives page changes -->
+<div id="stage" hidden></div>
+<div class="floatbox" id="floatBox" hidden>
+  <div id="floatVid" data-act="go-playing"></div>
+  <div class="fbtns"><button class="ib sm" data-act="float-audio" title="audio only">🎧</button><button class="ib sm" data-act="pl-close">✕</button></div>
+</div>
+<div class="mini" id="mini" hidden></div>
+<div class="dock" id="dock" hidden></div>
+
+<div class="toast" id="toast" hidden></div>
+<dialog class="sheet" id="sheet"></dialog>
+<script src="static/icons.js?v=4.2.1-dcccf4f4"></script>
+<script src="static/reminders.js?v=4.2.1-dcccf4f4"></script>
+
+</body>
+</html>
