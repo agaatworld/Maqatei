@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ar" dir="rtl" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>مقاطع</title>
+<link rel="icon" href="/static/icon-192.png">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<meta name="theme-color" content="#0d6e5f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="مقاطع">
+<link rel="apple-touch-icon" href="/static/icon-192.png">
+<link rel="stylesheet" href="/static/fonts.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <button class="ib" id="backBtn" data-act="back" hidden aria-label="Back">→</button>
+  <a class="brand" href="#/lib"><span class="logo">م</span><div class="minw"><h1 id="appName">مقاطع</h1><small id="appSub"></small></div></a>
+  <div class="grow"></div>
+  <a class="ib" href="#/search" aria-label="Search">🔎</a>
+  <button class="ib add" data-act="add" aria-label="Add">＋</button>
+</header>
+<nav class="tabbar" id="tabbar"></nav>
+<main class="view" id="view"></main>
+
+<!-- the player lives here and survives page changes -->
+<div id="stage" hidden></div>
+<div class="floatbox" id="floatBox" hidden>
+  <div id="floatVid" data-act="go-playing"></div>
+  <div class="fbtns"><button class="ib sm" data-act="float-audio" title="audio only">🎧</button><button class="ib sm" data-act="pl-close">✕</button></div>
+</div>
+<div class="mini" id="mini" hidden></div>
+<div class="dock" id="dock" hidden></div>
+
+<div class="toast" id="toast" hidden></div>
+<dialog class="sheet" id="sheet"></dialog>
+<script src="/static/app.js"></script>
+</body>
+</html>

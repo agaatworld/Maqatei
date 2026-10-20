@@ -1,0 +1,73 @@
+"""Messages the server writes (task titles, progress, file names) in Arabic or English."""
+from . import db
+
+MSG = {
+    "waiting": ("Waiting", "في الانتظار"),
+    "starting": ("Starting…", "يبدأ…"),
+    "done": ("Done", "تمّ"),
+    "paused": ("Paused — will continue from here", "متوقّف — سيكمل من حيث توقّف"),
+    "cancelled": ("Cancelled", "أُلغي"),
+    "restart": ("Continuing after restart", "يكمل بعد إعادة التشغيل"),
+    "dl_retrying": ("Connection lost — continuing the download…", "انقطع الاتصال — يكمل التنزيل…"),
+    "dl_stalled": ("The download keeps freezing. Check your internet and try again.",
+                   "التنزيل يتجمّد باستمرار. تأكد من الإنترنت وأعد المحاولة."),
+    "item_deleted": ("Item was deleted", "حُذف العنصر"),
+    "reading_link": ("Reading link…", "قراءة الرابط…"),
+    "downloading": ("Downloading…", "جارٍ التنزيل…"),
+    "downloading_pct": ("Downloading {p}%", "التنزيل {p}٪"),
+    "cutting": ("Cutting…", "جارٍ القصّ…"),
+    "cutting_pct": ("Cutting {p}%", "القصّ {p}٪"),
+    "dl_part": ("Downloading only this part…", "تنزيل هذا الجزء فقط…"),
+    "making_mp3": ("Making MP3…", "تحويل إلى MP3…"),
+    "converting_pct": ("Converting {p}%", "التحويل {p}٪"),
+    "need_download": ("Download the video first, then convert.", "نزّل المرئي أولًا ثم حوّله."),
+    "getting_audio": ("Getting the audio…", "جلب الصوت…"),
+    "getting_part_audio": ("Getting only this part's audio…", "جلب صوت هذا الجزء فقط…"),
+    "no_length": ("This part has no length.", "هذا الجزء بلا طول."),
+    "transcribing": ("Transcribing… {d}/{n} pieces", "التفريغ… {d}/{n} أجزاء"),
+    "pieces_note": ("{m} ({d}/{n} pieces done)", "{m} (انتهى {d}/{n})"),
+    "exporting": ("Preparing clip {d}/{n}…", "تجهيز المقطع {d}/{n}…"),
+    "zipping": ("Packing the files…", "ضغط الملفات…"),
+    "t_read_link": ("Read link: {t}", "قراءة رابط: {t}"),
+    "t_dl_audio": ("Download audio: {t}", "تنزيل الصوت: {t}"),
+    "t_dl_video": ("Download video: {t}", "تنزيل المرئي: {t}"),
+    "t_convert": ("Convert to MP3: {t}", "تحويل إلى MP3: {t}"),
+    "t_tx_all": ("Transcribe all: {t}", "تفريغ كامل: {t}"),
+    "t_tx_part": ("Transcribe part: {l} — {t}", "تفريغ مقطع: {l} — {t}"),
+    "t_mp3_part": ("MP3 part: {l} — {t}", "مقطع MP3: {l} — {t}"),
+    "t_video_part": ("Video part: {l} — {t}", "مقطع مرئي: {l} — {t}"),
+    "t_project": ("Project files: {t}", "ملفات المشروع: {t}"),
+    "full_transcript": ("Full transcript", "التفريغ الكامل"),
+    "range": ("{a} – {b}", "{a} – {b}"),
+    "to_end": ("end", "النهاية"),
+    "parts_dir": ("parts", "المقاطع"),
+    "tr_dir": ("transcripts", "التفريغات"),
+    "proj_dir": ("Projects", "المشاريع"),
+    "no_key": ("Add your free Groq key in Settings first.", "أضف مفتاح Groq المجاني من الإعدادات أولًا."),
+    "bad_key": ("Groq rejected the key — check it in Settings.", "رفض Groq المفتاح — تحقّق منه في الإعدادات."),
+    "limit_wait": ("Free limit reached — continuing in {n}s", "بلغت الحدّ المجاني — يكمل بعد {n} ث"),
+    "busy_wait": ("Groq is busy — continuing in {n}s", "Groq مشغول — يكمل بعد {n} ث"),
+    "net_wait": ("No internet — retrying in {n}s", "لا إنترنت — إعادة المحاولة بعد {n} ث"),
+    "no_net": ("No connection to Groq.", "تعذّر الاتصال بـ Groq."),
+    "refusing": ("Groq kept refusing — try again later.", "Groq يرفض — حاول لاحقًا."),
+    "no_offline": ("Offline engine not installed — switch the engine to Groq in Settings.",
+                   "المحرّك المحلّي غير مثبّت — اختر Groq من الإعدادات."),
+    "loading_model": ("Loading offline model (first time downloads ~1.5 GB)…", "تحميل النموذج المحلّي (أول مرة ~1.5 جيجا)…"),
+    "broken_file": ("The downloaded file is empty or broken — press Retry.", "الملفّ المنزَّل فارغ أو تالف — اضغط «أعد المحاولة»."),
+    "yt_blocked": ("YouTube is asking this phone to prove it is not a robot. Try: turn on the free 1.1.1.1 (WARP) app, Wi-Fi instead of mobile data, "
+                   "Settings → Update YouTube downloader, or add a YouTube cookies file in Settings. Then press Retry.",
+                   "يوتيوب يطلب من هاتفك إثبات أنه ليس روبوتًا. جرّب: شغّل تطبيق 1.1.1.1 (WARP) المجاني، أو شبكة Wi-Fi بدل بيانات الجوال، أو الإعدادات ← تحديث أداة "
+                   "تنزيل يوتيوب، أو أضف ملف كوكيز يوتيوب من الإعدادات. ثم اضغط «أعد المحاولة»."),
+    "not_found": ("Download finished but the file was not found.", "انتهى التنزيل ولم يُعثر على الملفّ."),
+    "hosted_disabled": ("Not available on the hosted version — this is a shared server.",
+                        "غير متاح على النسخة المستضافة — هذا خادم مشترك."),
+}
+
+
+def lang():
+    return "en" if db.get_settings().get("lang") == "en" else "ar"
+
+
+def M(key, **kw):
+    en, ar = MSG[key]
+    return (ar if lang() == "ar" else en).format(**kw)

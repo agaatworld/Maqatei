@@ -1,0 +1,96 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// One version for everything: the engine's app/version.py (shown in Settings) is the app version too.
+def engineVersion = (file("../engine/app/version.py").text =~ /VERSION\s*=\s*"([^"]+)"/)[0][1]
+def (vMajor, vMinor, vPatch) = engineVersion.tokenize('.').collect { it as int }
+
+android {
+    namespace 'com.maqati.app'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.turathpro.maqati"
+        minSdk 26
+        targetSdk 35
+        versionCode vMajor * 10000 + vMinor * 100 + vPatch
+        versionName engineVersion
+        buildConfigField "String", "UPDATE_REPO", '"beaconcrest8/maqati"'
+    }
+
+    // The same key signs every release forever, or Android refuses to install an update over the old app.
+    signingConfigs {
+        maqati {
+            storeFile file("../signing/maqati.jks")
+            storePassword "maqati-sign-2026"
+            keyAlias "maqati"
+            keyPassword "maqati-sign-2026"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.maqati
+        }
+        debug {
+            signingConfig signingConfigs.maqati
+        }
+    }
+
+    // One small APK per phone type instead of one huge APK with every type inside.
+    splits {
+        abi {
+            enable true
+            reset()
+            include 'arm64-v8a', 'armeabi-v7a', 'x86_64'
+            universalApk false
+        }
+    }
+
+    // Python, ffmpeg and QuickJS are run as programs, so they must be unpacked on the phone.
+    packaging {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+
+    sourceSets {
+        main {
+            assets.srcDirs += "$buildDir/generated/engineAssets"
+        }
+    }
+}
+
+// The Maqati engine (Python) and its one library travel inside the APK as assets.
+def copyEngine = tasks.register('copyEngine', Sync) {
+    from("../engine") {
+        include 'app/**', 'vendor/**'
+        exclude '**/__pycache__/**', '**/*.pyc', 'app/gateway.py'
+    }
+    into "$buildDir/generated/engineAssets/engine"
+}
+tasks.named('preBuild') { dependsOn copyEngine }
+
+dependencies {
+    implementation 'io.github.junkfood02.youtubedl-android:library:0.18.1'
+    implementation 'io.github.junkfood02.youtubedl-android:ffmpeg:0.18.1'
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.activity:activity-ktx:1.9.3'
+    implementation 'androidx.webkit:webkit:1.12.1'
+}

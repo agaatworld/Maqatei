@@ -1,0 +1,11 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مقاطع</title><meta name="theme-color" content="#0d6e5f">
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f7f5f0;color:#1d2321;font:17px/1.8 system-ui,Tahoma,sans-serif;text-align:center;padding:24px;box-sizing:border-box}
+.c{max-width:380px}.logo{width:72px;height:72px;border-radius:20px;margin:0 auto 14px;display:block}
+a,button{display:block;width:100%;min-height:54px;border-radius:14px;border:0;font:inherit;font-weight:700;margin-top:12px;text-decoration:none;line-height:54px;cursor:pointer}
+.p{background:#0d6e5f;color:#fff}.s{background:#e7f1ef;color:#0d6e5f}p{color:#6c7471}
+@media (prefers-color-scheme:dark){body{background:#101413;color:#e9eae7}.s{background:#14302b;color:#7fd1c1}p{color:#99a29e}}</style></head>
+<body><div class="c"><img class="logo" src="/static/icon-192.png" alt="">
+<h2>«مقاطع» يبدأ…</h2><p>لحظة من فضلك، تفتح الصفحة وحدها. / Maqati is starting, this page opens by itself.</p>
+<button class="p" onclick="location.reload()">أعد المحاولة</button></div>
+<script>setInterval(()=>fetch('/api/health',{cache:'no-store'}).then(r=>r.ok&&location.reload()).catch(()=>{}),3000)</script></body></html>
