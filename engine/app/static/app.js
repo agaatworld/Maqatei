@@ -131,6 +131,8 @@ const TX = {
   tr_choose: ['Choose a transcript', 'اختر التفريغ'], tr_showing: ['Showing', 'المعروض'],
   pin: ['Pin', 'تثبيت'], pinned: ['Pinned', 'مثبّت'], working_on: ['Working on now', 'قيد العمل الآن'],
   continue: ['Continue listening', 'أكمل الاستماع'],
+  more_opts: ['More', 'المزيد'], unlock_s: ['Unlock', 'فتح القفل'], unpin: ['Unpin', 'إلغاء التثبيت'], select: ['Select', 'تحديد'], note: ['Note', 'ملاحظة'], speed: ['Speed', 'السرعة'],
+  sec_marks_s: ['Parts', 'المقاطع'], sec_tr_s: ['Transcript', 'التفريغ'], sec_notes_s: ['Benefits', 'الفوائد'], sec_files_s: ['Files', 'الملفات'],
   lan_t: ['Open from an iPhone or another device', 'فتح من الآيفون أو جهاز آخر'],
   lan_p: ['Use Maqati from an iPhone, tablet or computer on the same Wi-Fi. Everything works, downloads too: this phone does the work.', 'استعمل «مقاطع» من آيفون أو تابلت أو كمبيوتر على نفس شبكة الواي فاي. كل شيء يعمل حتى التحميل: هذا الهاتف يقوم بالعمل.'],
   lan_sw: ['Allow devices on my Wi-Fi', 'السماح للأجهزة على شبكتي'],
@@ -542,13 +544,14 @@ setInterval(() => {
 }, 250);
 function playerToolsHTML() {
   const it = PL.item; if (!it || !S.item || it.id !== S.item.id) return '';
-  const vid = PL.isVideoFile(it);
-  return `<div class="chips"><span class="chip lbl">⏩ ${t('skip_by')}</span>${[5, 10, 15, 30].map(n => `<button class="chip ${skipS() === n ? 'on' : ''}" data-act="skip-set" data-s="${n}"><bdi>${n}${LANG === 'ar' ? 'ث' : 's'}</bdi></button>`).join('')}</div>
-    <div class="fine" dir="ltr"><button class="chip" data-act="fine" data-d="-1">−1</button><button class="chip" data-act="fine" data-d="-0.1">−0.1</button>
-      <span class="chip ptime" id="ptime">${fmtP(PL.time())}</span><button class="chip" data-act="fine" data-d="0.1">+0.1</button><button class="chip" data-act="fine" data-d="1">+1</button></div>
-    <div class="chips">${[0.75, 1, 1.25, 1.5, 2].map(r => `<button class="chip ${PL.rateV === r ? 'on' : ''}" data-act="rate" data-r="${r}"><bdi>${r}×</bdi></button>`).join('')}
-    ${vid ? `<button class="chip" data-act="audio-only">${PL.audioOnly ? '🎬 ' + t('show_video') : '🎧 ' + t('audio_only')}</button>` : ''}
-    ${vid && !PL.audioOnly ? `<button class="chip" data-act="fs">⛶ ${t('fullscreen')}</button>` : ''}</div>`;
+  const vid = PL.isVideoFile(it), fine = store.get('fineOpen', false);
+  return `<div class="ptools"><button class="chip" data-act="rate-next" aria-label="${t('speed')}"><bdi>${PL.rateV}×</bdi></button>
+    <button class="chip" data-act="skip-next" aria-label="${t('skip_by')}">⏩ <bdi>${skipS()}${LANG === 'ar' ? 'ث' : 's'}</bdi></button>
+    <button class="chip ${fine ? 'on' : ''}" data-act="fine-toggle">±0.1</button>
+    ${vid ? `<button class="chip" data-act="audio-only" aria-label="${t('audio_only')}">${PL.audioOnly ? '🎬' : '🎧'}</button>` : ''}
+    ${vid && !PL.audioOnly ? `<button class="chip" data-act="fs" aria-label="${t('fullscreen')}">⛶</button>` : ''}</div>
+    ${fine ? `<div class="fine" dir="ltr"><button class="chip" data-act="fine" data-d="-1">−1</button><button class="chip" data-act="fine" data-d="-0.1">−0.1</button>
+      <span class="chip ptime" id="ptime">${fmtP(PL.time())}</span><button class="chip" data-act="fine" data-d="0.1">+0.1</button><button class="chip" data-act="fine" data-d="1">+1</button></div>` : ''}`;
 }
 
 /* ================= library ================= */
@@ -586,7 +589,7 @@ async function vLibrary() {
   view().innerHTML = `${heroCard()}
     <div class="h"><h2>${t('library')}</h2><div class="grow"></div>
       <div class="segc viewsw"><button type="button" data-act="lib-view" data-v="grid" class="${store.get('libView', 'grid') === 'grid' ? 'on' : ''}" aria-label="grid">▦</button><button type="button" data-act="lib-view" data-v="list" class="${store.get('libView', 'grid') === 'list' ? 'on' : ''}" aria-label="list">☰</button></div>
-      <a class="btn soft" href="#/search">🔎 ${t('search')}</a></div>
+      </div>
     ${S.items.filter(i => i.pinned).length > 1 ? `<div class="sectitle">📍 ${t('working_on')}</div><div class="list pinlist">${S.items.filter(i => i.pinned).sort((a, b) => b.pinned - a.pinned).slice(1).map(itemRow).join('')}</div>` : ''}
     <div class="folders ${store.get('libView', 'grid') === 'list' ? 'aslist' : ''}">
       ${folderCard('all', t('all_items'), '🗂️', '#5b6b73', n('all'))}
@@ -607,12 +610,8 @@ async function vFolder(fid, tab) {
   const tabs = [['lessons', '🎧', 'tab_lessons'], ['works', '📦', 'tab_works'], ['parts', '✂️', 'tab_parts'], ['ex', '📌', 'tab_ex']];
   view().innerHTML = `
     <div class="crumbs"><a href="#/lib">${t('library')}</a> ${SEP()}</div>
-    <div class="h"><h2>${esc(icon)} <span dir="auto">${esc(name)}</span></h2></div>
-    <div class="toolbar">
-      ${f ? `<button class="btn" data-act="custom-folder" data-id="${f.id}">🎨 ${t('customize')}</button>` : ''}
-      <button class="btn soft" data-act="folder-tr" data-id="${fid}">📝 ${t('transcribe_all')}</button>
-      ${f ? `<button class="btn ghost danger" data-act="del-folder" data-id="${f.id}">🗑 ${t('delete')}</button>` : ''}
-    </div>
+    <div class="h"><h2>${esc(icon)} <span dir="auto">${esc(name)}</span></h2><div class="grow"></div>
+      <button class="ib more" data-act="folder-menu" data-id="${fid}" aria-label="${t('more_opts')}">${ICON('dots')}</button></div>
     <div class="ftabs">${tabs.map(([k, i, n]) => `<a href="#/lib/f/${fid}/${k}" class="${tab === k ? 'on' : ''}">${i} ${t(n)}</a>`).join('')}</div>
     <div id="fbody"></div>${fabHTML()}`;
   if (tab === 'lessons') {
@@ -689,7 +688,7 @@ async function qMenu(el, itemId, fmtk, pick) {
 }
 const qdd = (f, attrs = '', mode = '') => `<button class="btn qdd" data-act="qmenu" data-f="${f}" ${attrs} ${mode ? `data-mode="${mode}"` : ''} aria-label="quality">▾</button>`;
 /* status-aware buttons for a cut part: shows progress, then ▶ / ⬇ when the file is ready */
-function clipBtns(jobs, match, attrs, vid) {
+function clipBtns(jobs, match, attrs, vid, only) {
   const one = fmtk => {
     const j = [...jobs].reverse().find(x => x.kind === 'clip' && (x.params.fmt || 'mp3') === fmtk && match(x));
     const label = fmtk === 'mp3' ? 'MP3' : t('video');
@@ -698,7 +697,7 @@ function clipBtns(jobs, match, attrs, vid) {
     if (j.status === 'error') return `<button class="btn warn" data-act="job-retry" data-j="${j.id}">⚠️ ${label} · ${t('retry_short')}</button>`;
     return `<button class="btn busy" disabled>⏳ ${label} <bdi>${Math.round((j.progress || 0) * 100)}%</bdi>${j.eta ? ` <small class="tk">~${dur(j.eta)}</small>` : ''}</button>`;
   };
-  return one('mp3') + (vid ? one('video') : '');
+  return only === 'video' ? one('video') : only === 'mp3' ? one('mp3') : one('mp3') + (vid ? one('video') : '');
 }
 function exCard(x, jobs, showItem) {
   const open = S.exOpen === x.id;
@@ -800,8 +799,8 @@ async function vItem(id, at) {
   view().innerHTML = `
     <div class="crumbs">${crumbFolder(d)}</div>
     <div class="itemgrid"><div class="col-play">
-      <div class="itemhead"><div class="titlebox"><h2 class="t" dir="auto" data-act="rename-item" id="itTitle">${esc(nice(d.title))} <span class="muted small noico">${ICON('pencil')}</span></h2>
-        <div class="meta" id="itMeta"></div></div></div>
+      <div class="itemhead"><div class="titlebox"><h2 class="t" dir="auto" data-act="rename-item" id="itTitle">${esc(nice(d.title))}</h2>
+        <div class="meta" id="itMeta"></div></div><button class="ib more" data-act="item-menu" aria-label="${t('more_opts')}">${ICON('dots')}</button></div>
       <div id="banner"></div>
       <div class="player" id="player"></div>
       <div id="pl-tools"></div>
@@ -811,11 +810,9 @@ async function vItem(id, at) {
 function crumbFolder(d) { const f = S.folders.find(x => x.id === d.folder_id); return `<a href="#/lib">${t('library')}</a> ${SEP()} <a href="#/lib/f/${f ? f.id : 'none'}">${esc(f ? f.name : t('unsorted'))}</a> ${SEP()}`; }
 function renderMeta() {
   const d = S.item, f = S.folders.find(x => x.id === d.folder_id);
-  $('#itMeta').innerHTML = `<button class="chip acc" data-act="move-item">${esc((f && f.icon) || '📁')} ${esc(f ? f.name : t('unsorted'))}</button>
-    <button class="chip ${d.pinned ? 'pinon' : ''}" data-act="pin-item">📍 ${d.pinned ? t('pinned') : t('pin')}</button>
-    <button class="chip acc" data-act="item-projects">💼 ${t('in_projects')}${d.projects.length ? ` (${d.projects.length})` : ''}</button>
-    ${d.duration ? `<span class="chip">⏱ <bdi>${fmt(d.duration)}</bdi></span>` : ''}
-    ${d.url ? `<a class="chip" href="${esc(d.url)}" target="_blank" rel="noopener">🔗 ${t('source')}</a>` : ''}`;
+  $('#itMeta').innerHTML = `<button class="chip acc" data-act="move-item">${esc((f && f.icon) || '📁')} <span dir="auto">${esc(f ? f.name : t('unsorted'))}</span></button>
+    ${d.duration ? `<span class="mtx"><bdi>${fmt(d.duration)}</bdi></span>` : ''}
+    ${d.pinned ? `<span class="mtx gold">📍 ${t('pinned')}</span>` : ''}${d.projects.length ? `<span class="mtx">💼 ${d.projects.length}</span>` : ''}`;
 }
 function renderBanner() {
   const d = S.item, b = $('#banner'); if (!b) return;
@@ -838,28 +835,34 @@ async function refreshItem(opts = {}) {
   const srcChanged = d.file !== S.item.file;
   S.item = d;
   if (srcChanged && PL.item && PL.item.id === d.id) { const at = PL.time(), was = PL.playing(); PL.unload(); PL.load(d, at || null, was); if (d.file) toast(t('dl_done')); }
-  $('#itTitle').innerHTML = `${esc(nice(d.title))} <span class="muted small noico">${ICON('pencil')}</span>`;
+  $('#itTitle').textContent = nice(d.title);
   renderMeta(); renderBanner(); renderSections(opts); PL.place();
 }
+const TAB_OF = { marks: 'marks', tr: 'tr', ex: 'notes', notes: 'notes', files: 'files' };
 function secHTML(key, icon, title, n, body) {
-  const closed = store.get('sec.' + key, key === 'tools' || key === 'notes');
-  return `<section class="sec ${closed ? 'closed' : ''}" data-sec="${key}"><button class="sechead" data-act="toggle-sec"><span class="ico">${icon}</span>
-    <span class="minw">${title}</span>${n ? `<span class="n">${n}</span>` : ''}<span class="chev">⌄</span></button><div class="secbody" id="sb-${key}">${body}</div></section>`;
+  const on = TAB_OF[key] === store.get('itab', 'marks');
+  return `<section class="sec ${on ? 'show' : ''}" data-sec="${key}"><div class="sectop"><span class="ico">${icon}</span><b class="minw">${title}</b>${n ? `<span class="n">${n}</span>` : ''}</div><div class="secbody" id="sb-${key}">${body}</div></section>`;
 }
-function openFiles() { store.set('sec.files', false); const f = $('[data-sec=files]'); if (f) f.classList.remove('closed'); }
+function showTab(k) {
+  store.set('itab', k);
+  $$('#itabs button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
+  $$('#secs .sec').forEach(x => x.classList.toggle('show', TAB_OF[x.dataset.sec] === k));
+}
+function openFiles() { showTab('files'); }
 function renderSections(opts = {}) {
   const d = S.item, host = $('#secs'); if (!host) return;
   const active = document.activeElement;
   if (opts.soft && active && host.contains(active) && /INPUT|TEXTAREA/.test(active.tagName)) return;   // don't disturb typing
   const trOld = opts.keepTr && $('#sb-tr') ? $('#sb-tr').innerHTML : null;
   const y = window.scrollY;
-  host.innerHTML = [
+  const tab = store.get('itab', 'marks'), cnt = { marks: d.bookmarks.length, tr: d.transcripts.length, notes: d.notes.length + d.excerpts.length, files: d.files.length };
+  host.innerHTML = `<div class="itabs" id="itabs" role="tablist">${[['marks', 'sec_marks_s'], ...(S.set.show_transcript !== false ? [['tr', 'sec_tr_s']] : []), ['notes', 'sec_notes_s'], ['files', 'sec_files_s']].map(([k, l]) =>
+    `<button role="tab" data-act="itab" data-k="${k}" class="${tab === k ? 'on' : ''}">${t(l)}${cnt[k] ? `<small>${cnt[k]}</small>` : ''}</button>`).join('')}</div>` + [
     secHTML('marks', '✂️', t('sec_marks'), d.bookmarks.length, marksHTML()),
     S.set.show_transcript !== false ? secHTML('tr', '📝', t('sec_tr'), d.transcripts.length, '') : '',
     secHTML('ex', '📌', t('sec_ex'), d.excerpts.length, exListHTML()),
     secHTML('notes', '💡', t('sec_notes'), d.notes.length, notesHTML()),
     secHTML('files', '📁', t('sec_files'), d.files.length, filesHTML()),
-    secHTML('tools', '🧰', t('sec_tools'), null, toolsHTML()),
   ].join('');
   if (S.set.show_transcript !== false) { if (trOld != null) $('#sb-tr').innerHTML = trOld; else loadTranscript(); }
   window.scrollTo(0, y);
@@ -877,24 +880,23 @@ function marksHTML() {
       <span class="split"><button class="btn pri" data-act="bulk" data-a="mp3">⬇ MP3</button>${qdd('mp3', '', 'bulk')}</span>${vid ? `<span class="split"><button class="btn" data-act="bulk" data-a="video">⬇ ${t('video')}</button>${qdd('video', '', 'bulk')}</span>` : ''}
       <button class="btn" data-act="bulk" data-a="transcribe">📝 ${t('transcribe')}</button><button class="btn" data-act="bulk" data-a="project">${PJADD} ${t('to_project')}</button>
       <button class="btn ghost" data-act="sel-none">✕</button></div>` : ''}
-    ${typed}<div class="btns" style="margin-bottom:6px"><label class="chip big"><input type="checkbox" data-act="sel-all" ${n && n === d.bookmarks.length ? 'checked' : ''}> ${t('select_all')}</label>
-      <button class="chip big gold" data-act="export" data-which="clips">📕 ${t('export_book')}</button></div>
+    ${typed}<div class="btns" style="margin-bottom:6px"><button class="chip ${S.selMode ? 'on' : ''}" data-act="sel-mode">☑ ${t('select')}</button>
+      ${S.selMode ? `<label class="chip"><input type="checkbox" data-act="sel-all" ${n && n === d.bookmarks.length ? 'checked' : ''}> ${t('select_all')}</label>` : ''}
+      <button class="chip gold" data-act="export" data-which="clips">📕 ${t('export_book')}</button></div>
     ${d.bookmarks.map(b => { const tj = trJob(b); return `
     <div class="mark ${b.end == null ? 'pt' : ''} ${b.done ? 'done' : ''}" data-b="${b.id}">
-      <div class="r1"><input type="checkbox" class="sel" data-act="sel" ${S.sel.has(b.id) ? 'checked' : ''}>
-        <button class="play" data-act="seek" data-t="${b.start}">▶</button>
-        <input class="nm" dir="auto" data-edit="mark-name" value="${esc(b.name)}" placeholder="${t('untitled')}" ${b.done ? 'readonly' : ''}>
-        ${S.lockAsk === b.id ? `<button class="btn ${b.done ? '' : 'pri'} lockok" data-act="mark-done-ok">${b.done ? '🔓 ' + t('unlock_ok') : '✓ ' + t('lock_ok')}</button><button class="btn ghost" data-act="mark-done-no">✕</button>`
-          : `<button class="lockb ${b.done ? 'on' : ''}" data-act="mark-done" aria-label="done">✓</button>`}</div>
-      <div class="r2"><button class="chip when" data-act="seek" data-t="${b.start}">${b.end != null ? `▶ ${rng(b.start, b.end)}` : `▶ <bdi>${fmt(b.start)}</bdi>`}</button>
-        ${b.done ? `<span class="chip okc">✓ ${t('done_lock')}</span>` : `<button class="chip" data-act="mark-times" aria-label="edit">✏️</button>`}
-        ${b.end == null && !b.done ? `<button class="chip acc" data-act="set-end">🔴 ${t('set_end')}</button>` : b.end != null ? `<span class="chip">⏱ <bdi dir="ltr">${fmtS(b.end - b.start)}</bdi></span>` : ''}</div>
-      <div class="btns">${clipBtns(d.jobs, j => j.bookmark_id === b.id, '', vid)}
+      <div class="r1">${S.selMode ? `<input type="checkbox" class="sel" data-act="sel" ${S.sel.has(b.id) ? 'checked' : ''}>` : ''}
+        <div class="mt"><input class="nm" dir="auto" data-edit="mark-name" value="${esc(b.name)}" placeholder="${t('untitled')}" ${b.done ? 'readonly' : ''}>
+          <button class="mtime" data-act="seek" data-t="${b.start}">${b.end != null ? rng(b.start, b.end) : `<bdi>${fmt(b.start)}</bdi>`}</button></div>
+        ${b.done ? `<span class="chip okc">✓ ${t('done_lock')}</span>` : ''}</div>
+      ${S.lockAsk === b.id ? `<div class="btns lockrow"><button class="btn ${b.done ? '' : 'pri'} lockok" data-act="mark-done-ok">${b.done ? '🔓 ' + t('unlock_ok') : '✓ ' + t('lock_ok')}</button><button class="btn ghost" data-act="mark-done-no">✕</button></div>` : ''}
+      ${b.end == null && !b.done ? `<button class="btn soft wide" data-act="set-end">🔴 ${t('set_end')}</button>` : ''}
+      <div class="mbar"><button class="btn icon" data-act="seek" data-t="${b.start}" aria-label="${t('play')}">▶</button>
+        ${clipBtns(d.jobs, j => j.bookmark_id === b.id, '', vid, 'mp3')}
         ${tj && tj.status === 'done' ? `<button class="btn ok" data-act="tr-pick-b" data-b="${b.id}">📝 ✓</button>`
           : tj && ['running', 'queued'].includes(tj.status) ? `<button class="btn busy" disabled>📝 <bdi>${Math.round((tj.progress || 0) * 100)}%</bdi></button>`
           : `<button class="btn" data-act="one" data-a="transcribe">📝 ${t('transcribe')}</button>`}
-        <button class="btn" data-act="one" data-a="project">${PJADD}</button>
-        ${b.done ? '' : `<button class="btn ghost" data-act="mark-note">💬</button><button class="btn ghost danger" data-act="del-mark">🗑</button>`}</div>
+        <button class="btn icon" data-act="mark-more" aria-label="${t('more_opts')}">${ICON('dots')}</button></div>
       <div class="inl"></div>
       ${b.note || S.noteOpen === b.id ? `<textarea class="note" dir="auto" data-edit="mark-note" placeholder="${t('note_ph')}" ${b.done ? 'readonly' : ''}>${esc(b.note || '')}</textarea>` : ''}
     </div>`; }).join('')}`;
@@ -1147,7 +1149,6 @@ function toolsHTML() {
     <button class="btn big gold" data-act="export" data-which="full">📕 ${t('export_book')}</button>
     <button class="btn big" data-act="rename-item">✏️ ${t('rename')}</button>
     <button class="btn big" data-act="move-item">📁 ${t('move')}</button>
-    <button class="btn big" data-act="item-projects">💼 ${t('in_projects')}</button>
     <button class="btn big danger" data-act="del-item">🗑 ${t('del_item')}</button></div>`;
 }
 
@@ -1618,7 +1619,7 @@ const ACT = {
   'pl-close': () => PL.unload(),
   'float-audio': () => PL.setAudioOnly(true),
   'play-at': el => playAt(+el.dataset.item, +el.dataset.t),
-  'open-tr': el => { store.set('tr.' + el.dataset.item, el.dataset.k); store.set('sec.tr', false); location.hash = '#/item/' + el.dataset.item; },
+  'open-tr': el => { store.set('tr.' + el.dataset.item, el.dataset.k); store.set('itab', 'tr'); location.hash = '#/item/' + el.dataset.item; },
   'export-tr': el => exportSheet('transcript', +el.dataset.tid, null, el.dataset.title),
   'pin-item': async () => { const d = S.item; await patch('/api/items/' + d.id, { pinned: !d.pinned }); d.pinned = d.pinned ? null : Date.now() / 1000; renderMeta(); toast(d.pinned ? '📍 ' + t('pinned') : t('saved')); },
   fgrp: el => { const b = el.closest('.fgbox'); b.classList.toggle('closed'); store.set(el.dataset.k, b.classList.contains('closed')); },
@@ -1640,6 +1641,20 @@ const ACT = {
   },
   bm: () => bookmarkHere(), mstart: () => markStart(), mend: () => markEnd(),
   // item
+  itab: el => showTab(el.dataset.k),
+  'folder-menu': el => { const fid = el.dataset.id, real = /^\d+$/.test(fid);
+    sheet(t('more_opts'), `<div class="menu">
+      ${real ? `<button class="mi" data-act="custom-folder" data-id="${fid}" value="x">🎨 ${t('customize')}</button>` : ''}
+      <button class="mi" data-act="folder-tr" data-id="${fid}" value="x">📝 ${t('transcribe_all')}</button>
+      ${real ? `<button class="mi danger" data-act="del-folder" data-id="${fid}" value="x">🗑 ${t('delete')}</button>` : ''}</div>`); },
+  'item-menu': () => sheet(esc(nice(S.item.title)), `<div class="menu">
+      <button class="mi" data-act="pin-item" value="x">📍 ${S.item.pinned ? t('unpin') : t('pin')}</button>
+      <button class="mi" data-act="item-projects" value="x">💼 ${t('in_projects')}${S.item.projects.length ? ` (${S.item.projects.length})` : ''}</button>
+      ${S.item.url ? `<a class="mi" href="${esc(S.item.url)}" target="_blank" rel="noopener">🔗 ${t('source')}</a>` : ''}</div>
+      <div class="sectitle">${t('sec_tools')}</div>${toolsHTML()}`),
+  'rate-next': () => { const rs = [0.75, 1, 1.25, 1.5, 2], r = rs[(rs.indexOf(PL.rateV) + 1) % rs.length]; PL.rate(r); store.set('rate', r); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
+  'skip-next': () => { const ss = [5, 10, 15, 30]; store.set('skip', ss[(ss.indexOf(skipS()) + 1) % ss.length]); ui(); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
+  'fine-toggle': () => { store.set('fineOpen', !store.get('fineOpen', false)); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
   'toggle-sec': el => { const s = el.closest('.sec'); s.classList.toggle('closed'); store.set('sec.' + s.dataset.sec, s.classList.contains('closed')); },
   'rename-item': async () => { const n = await promptText(t('rename'), nice(S.item.title)); if (n) { await patch('/api/items/' + S.item.id, { title: n }); refreshItem({ keepTr: true }); } },
   'move-item': async () => {
@@ -1706,6 +1721,14 @@ const ACT = {
   },
   'tr-pick-b': el => { const tr = S.item.transcripts.find(x => x.bookmark_id === +el.dataset.b); if (tr) { S.tr.key = String(tr.id); store.set('tr.' + S.item.id, S.tr.key); const s = $('[data-sec=tr]'); s.classList.remove('closed'); loadTranscript(); s.scrollIntoView({ behavior: 'smooth' }); } },
   'mark-times': el => markTimes(markOf(el)),
+  'sel-mode': () => { S.selMode = !S.selMode; if (!S.selMode) S.sel.clear(); $('#sb-marks').innerHTML = marksHTML(); },
+  'mark-more': el => { const b = markOf(el), vid = S.item.media === 'video' || S.item.kind === 'youtube';
+    sheet(esc(b.name || t('untitled')), `<div data-b="${b.id}"><div class="menu">
+      ${vid ? `<div class="mi plain">${clipBtns(S.item.jobs, j => j.bookmark_id === b.id, '', true, 'video')}</div>` : ''}
+      <button class="mi" data-act="one" data-a="project" value="x">💼 ${t('to_project')}</button>
+      ${b.done ? '' : `<button class="mi" data-act="mark-times" value="x">✏️ ${t('edit_times')}</button><button class="mi" data-act="mark-note" value="x">💬 ${t('note')}</button>`}
+      <button class="mi" data-act="mark-done" value="x">${b.done ? '🔓 ' + t('unlock_s') : '✓ ' + t('done_lock')}</button>
+      ${b.done ? '' : `<button class="mi danger" data-act="del-mark" value="x">🗑 ${t('delete')}</button>`}</div></div>`); },
   'part-typed': () => { const id = S.item.id, on = PL.item && PL.item.id === id, x = on ? PL.time() : 0; if (on && PL.playing()) PL.pause(); partSheet(id, x, Math.min(x + 30, S.item.duration || x + 30)); },
   fine: el => { if (!PL.ready()) return; PL.seek(Math.max(0, PL.time() + +el.dataset.d), PL.playing()); },
   'mark-done': el => { S.lockAsk = markOf(el).id; $('#sb-marks').innerHTML = marksHTML(); clearTimeout(S.lockT); S.lockT = setTimeout(() => { if (S.lockAsk) { S.lockAsk = null; const m = $('#sb-marks'); if (m) m.innerHTML = marksHTML(); } }, 5000); },

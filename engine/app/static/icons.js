@@ -75,6 +75,7 @@
     chevL: '<path d="M15 6l-6 6 6 6"/>',
     phone: '<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/>',
     skip: '<path d="M5 6l6 6-6 6M12 6l6 6-6 6"/>',
+    dots: '<circle cx="5.5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
     dot: '<circle cx="12" cy="12" r="4.5" fill="currentColor" stroke="none"/>',
   };
   const svg = n => `<svg class="ic ic-${n}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
@@ -92,7 +93,7 @@
     '⛶': 'expand', '🔊': 'speaker', '☰': 'list', '▦': 'grid', '🌙': 'moon', '☀️': 'sun', '☀': 'sun', '💬': 'chat', '👁': 'eye', '👁️': 'eye',
     '🧹': 'broom', '🌐': 'globe', '🧪': 'flask', '🖥️': 'monitor', '🖥': 'monitor', '🍪': 'cookie', '🛰️': 'signal', '🛰': 'signal',
     '🔋': 'battery', '👤': 'user', '🚪': 'logout', '🩺': 'pulse', '🧰': 'tools', '🕌': 'mosque', '🎓': 'cap', '🧠': 'bulb', '❤️': 'heart',
-    '🌿': 'leaf', '👨‍🏫': 'user', '📿': 'beads', '🕋': 'kaaba', '✨': 'sparkle', '⬇': 'dl', '📱': 'phone', '⏩': 'skip', '⏪': 'skip', '⬇️': 'dl', '🎙️': 'speaker', '📥': 'dl',
+    '🌿': 'leaf', '👨‍🏫': 'user', '📿': 'beads', '🕋': 'kaaba', '✨': 'sparkle', '⬇': 'dl', '📱': 'phone', '⏩': 'skip', '☑': 'checkc', '☑️': 'checkc', '⏪': 'skip', '⬇️': 'dl', '🎙️': 'speaker', '📥': 'dl',
   };
   // arrows become chevrons only when they stand alone (a back button), never inside a sentence
   const ALONE = { '→': 'chevR', '←': 'chevL', '‹': 'chevL', '›': 'chevR' };
