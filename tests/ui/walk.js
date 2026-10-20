@@ -9,7 +9,7 @@ const { chromium } = require('playwright');
   const errs = [], steps = [];
   p.on('pageerror', e => errs.push(`[${steps.at(-1)}] ${e.message}`));
   p.on('console', m => { if (m.type() === 'error' && !/favicon|404|net::/.test(m.text())) errs.push(`[${steps.at(-1)}] console: ${m.text()}`); });
-  const step = async (name, fn) => { steps.push(name); try { await fn(); } catch (e) { errs.push(`[${name}] FAILED: ${e.message.split('\n')[0]}`); } await p.waitForTimeout(400); };
+  const step = async (name, fn) => { steps.push(name); try { await fn(); } catch (e) { errs.push(`[${name}] FAILED: ${e.message.split('\n')[0]}`); try { await p.screenshot({ path: out + '/fail-' + name.replace(/\W+/g, '_') + '.png' }); } catch (x) {} } await p.waitForTimeout(400); };
   const closeSheet = async () => { await p.evaluate(() => { const d = document.getElementById('sheet'); if (d.open) d.close(); }); };
   const hideToast = () => p.evaluate(() => { const t = document.getElementById('toast'); if (t) t.hidden = true; });
 

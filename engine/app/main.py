@@ -15,7 +15,7 @@ from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
 from . import db, export, jobs, lan, media, search, transcribe
-from .i18n import M
+from .i18n import M, lang as ui_lang
 from .version import VERSION
 
 STATIC = Path(__file__).parent / "static"
@@ -1010,6 +1010,36 @@ def test_mirrors(r):
     from . import mirrors
     res = mirrors.check_all()
     return {"servers": [{"server": s.split("//")[1], "ok": ok, "title": t} for s, ok, t in res]}
+
+
+@route("POST", "/api/test-youtube")
+def test_youtube(r):
+    """Try to read one well-known video every way the app knows, and say exactly what happened (for the owner's screenshots)."""
+    steps = []
+    add = lambda ok, ar, en: steps.append({"ok": ok, "text": ar if ui_lang() != "en" else en})
+    ver = media.ytdlp_version()
+    add(bool(ver), f"أداة التنزيل yt-dlp: {ver or 'غير موجودة'}", f"yt-dlp: {ver or 'missing'}")
+    js = media.JS_RUNTIME
+    add(bool(js), f"مساعد JavaScript: {js or 'غير موجود (يحتاجه يوتيوب)'}", f"JavaScript helper: {js or 'missing (YouTube needs it)'}")
+    add(bool(media.FFMPEG), "ffmpeg موجود" if media.FFMPEG else "ffmpeg غير موجود", "ffmpeg found" if media.FFMPEG else "ffmpeg missing")
+    add(bool(media.cookies_file()), "ملف كوكيز: " + ("موجود" if media.cookies_file() else "لا يوجد (اختياري)"), "cookies file: " + ("yes" if media.cookies_file() else "none (optional)"))
+    url = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+    tried = []
+    for alt in range(len(media.ALTS)):
+        try:
+            out = subprocess.run(media.ytdlp_base(alt) + ["-J", "--skip-download", url], capture_output=True, text=True, encoding="utf-8",
+                                 errors="replace", timeout=120, creationflags=media.NO_WINDOW, env=media.UTF8_ENV)
+        except Exception as e:
+            tried.append(f"{' '.join(media.ALTS[alt]) or 'default'}: {e}")
+            continue
+        if out.returncode == 0:
+            title = json.loads(out.stdout).get("title")
+            add(True, f"يوتيوب يعمل ✓ ({' '.join(media.ALTS[alt]) or 'الطريقة العادية'}) — «{title}»", f"YouTube works ✓ ({' '.join(media.ALTS[alt]) or 'default'}) — “{title}”")
+            return {"steps": steps, "tried": tried}
+        lines = [l for l in out.stderr.splitlines() if "ERROR" in l or "WARNING" in l]
+        tried.append(f"{' '.join(media.ALTS[alt]) or 'default'}: {(lines[-1] if lines else out.stderr[-200:]).strip()[:300]}")
+    add(False, "يوتيوب رفض كل الطرق. التفاصيل أدناه.", "YouTube refused every way in. Details below.")
+    return {"steps": steps, "tried": tried}
 
 
 @route("POST", "/api/cookies")

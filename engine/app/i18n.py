@@ -54,6 +54,10 @@ MSG = {
                    "المحرّك المحلّي غير مثبّت — اختر Groq من الإعدادات."),
     "loading_model": ("Loading offline model (first time downloads ~1.5 GB)…", "تحميل النموذج المحلّي (أول مرة ~1.5 جيجا)…"),
     "broken_file": ("The downloaded file is empty or broken — press Retry.", "الملفّ المنزَّل فارغ أو تالف — اضغط «أعد المحاولة»."),
+    "yt_blocked_pc": ("YouTube is asking this computer to prove it is not a robot. Try: open youtube.com in Firefox, Edge or Chrome and sign in "
+                      "(the app then uses that browser's cookies by itself), or Settings → add a YouTube cookies file, or Settings → Update YouTube downloader. Then press Retry.",
+                      "يوتيوب يطلب من هذا الجهاز إثبات أنه ليس روبوتًا. جرّب: افتح youtube.com في Firefox أو Edge أو Chrome وسجّل الدخول (يستعمل التطبيق كوكيز المتصفح وحده)، "
+                      "أو الإعدادات ← أضف ملف كوكيز يوتيوب، أو الإعدادات ← تحديث أداة تنزيل يوتيوب. ثم اضغط «أعد المحاولة»."),
     "yt_blocked": ("YouTube is asking this phone to prove it is not a robot. Try: turn on the free 1.1.1.1 (WARP) app, Wi-Fi instead of mobile data, "
                    "Settings → Update YouTube downloader, or add a YouTube cookies file in Settings. Then press Retry.",
                    "يوتيوب يطلب من هاتفك إثبات أنه ليس روبوتًا. جرّب: شغّل تطبيق 1.1.1.1 (WARP) المجاني، أو شبكة Wi-Fi بدل بيانات الجوال، أو الإعدادات ← تحديث أداة "

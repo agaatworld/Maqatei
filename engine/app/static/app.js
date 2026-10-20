@@ -167,7 +167,7 @@ const TX = {
   sub_empty: ['Empty — move clips here with 📁', 'فارغ — انقل المقاطع إليه بزرّ 📁'], move_to_sub: ['Move to sub-folder', 'نقل إلى مجلد فرعي'],
   sub_opt: ['Sub-folder (optional)', 'مجلد فرعي (اختياري)'], del_sub_q: ['Delete sub-folder “{0}”? Its clips stay in the project.', 'حذف المجلد الفرعي «{0}»؟ تبقى مقاطعه في المشروع.'],
   clip_win: ['Part', 'المقطع'], recut: ['Cut again with these times', 'أعد القصّ بهذا الوقت'], in_lesson: ['Open in lesson', 'افتحه في الدرس'],
-  del_file: ['Delete this file', 'احذف هذا الملف'], del_file_q: ['Delete this file?', 'حذف هذا الملف؟'], skip_by: ['Jump', 'التقديم والتأخير'], test_mirrors: ['Test backup servers', 'اختبر الخوادم البديلة'], mir_ok: ['{0} of {1} servers work — downloads can use them if YouTube blocks you.', 'يعمل {0} من {1} — سيستعملها التطبيق وحده إذا حظرك يوتيوب.'], mir_none: ['No backup server answers right now. Fastest fix: turn on the free 1.1.1.1 (WARP) app and retry, or add a cookies file.', 'لا يوجد خادم بديل يعمل الآن. الحل الأسرع: ثبّت تطبيق 1.1.1.1 (WARP) المجاني وشغّله ثم أعد المحاولة، أو أضف ملف الكوكيز.'],
+  del_file: ['Delete this file', 'احذف هذا الملف'], del_file_q: ['Delete this file?', 'حذف هذا الملف؟'], skip_by: ['Jump', 'التقديم والتأخير'], test_mirrors: ['Test backup servers', 'اختبر الخوادم البديلة'], test_yt: ['Test YouTube now', 'اختبر يوتيوب الآن'], mir_ok: ['{0} of {1} servers work — downloads can use them if YouTube blocks you.', 'يعمل {0} من {1} — سيستعملها التطبيق وحده إذا حظرك يوتيوب.'], mir_none: ['No backup server answers right now. Fastest fix: turn on the free 1.1.1.1 (WARP) app and retry, or add a cookies file.', 'لا يوجد خادم بديل يعمل الآن. الحل الأسرع: ثبّت تطبيق 1.1.1.1 (WARP) المجاني وشغّله ثم أعد المحاولة، أو أضف ملف الكوكيز.'],
   left: ['~{0} left', 'يتبقّى ~{0}'], took: ['took {0}', 'استغرق {0}'],
   s_yt: ['YouTube', 'يوتيوب'], ck_on: ['YouTube cookies added ✓', 'ملف كوكيز يوتيوب مُضاف ✓'], ck_off: ['No cookies file', 'لا يوجد ملف كوكيز'],
   ck_add: ['Add cookies.txt', 'أضف ملف cookies.txt'], ck_del: ['Remove', 'احذفه'],
@@ -1652,6 +1652,7 @@ async function vSettings() {
     ${h.web ? '' : `<div class="card pad"><h3>▶️ ${t('s_yt')}</h3><p>${h.cookies ? '✅ ' + t('ck_on') : 'ℹ️ ' + t('ck_off')}</p>
       <div class="btns"><button class="btn big" data-act="ck-add">🍪 ${t('ck_add')}</button>${h.cookies ? `<button class="btn ghost danger" data-act="ck-del">🗑 ${t('ck_del')}</button>` : ''}
         ${h.hosted ? '' : `<button class="btn" data-act="upd-ytdlp">⬇ ${t('upd_ytdlp')}</button>`}<input type="file" id="ckFile" accept=".txt,text/plain" hidden></div>
+      <div class="btns" style="margin-top:10px"><button class="btn pri big wide" data-act="test-yt">🧪 ${t('test_yt')}</button></div><div id="ytRes" style="margin-top:8px"></div>
       <div class="btns" style="margin-top:10px"><button class="btn soft big wide" data-act="test-mirrors">🛰️ ${t('test_mirrors')}</button></div><div id="mirRes" style="margin-top:8px"></div>
       <p class="muted small">${t('ck_p')}</p></div>`}
     ${h.hosted || h.web || IS_LAN ? '' : `<div class="card pad" id="lanCard"><h3>📱 ${t('lan_t')}</h3><p class="muted">${t('lan_p')}</p>
@@ -1958,6 +1959,14 @@ const ACT = {
   'apk-update': () => { if (window.MaqatiApp) MaqatiApp.checkUpdate(); },
   'apk-battery': () => { if (window.MaqatiApp) MaqatiApp.askBackground(); },
   'ck-add': () => $('#ckFile').click(),
+  'test-yt': async el => {
+    const box = $('#ytRes'); el.disabled = true; box.innerHTML = '<span class="spin"></span> …';
+    try {
+      const r = await post('/api/test-youtube');
+      box.innerHTML = r.steps.map(s => `<div>${s.ok ? '✅' : '❌'} ${esc(s.text)}</div>`).join('') + (r.tried.length ? `<details class="small muted" style="margin-top:6px"><summary>${LANG === 'ar' ? 'التفاصيل التقنية' : 'Technical details'}</summary>${r.tried.map(x => `<div dir="ltr">${esc(x)}</div>`).join('')}</details>` : '');
+    } catch (e) { box.textContent = '❌ ' + e.message; }
+    el.disabled = false;
+  },
   'test-mirrors': async el => {
     const box = $('#mirRes'); el.disabled = true; box.innerHTML = '<span class="spin"></span> …';
     try {

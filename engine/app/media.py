@@ -285,6 +285,9 @@ JS_RUNTIME = "quickjs" if QJS else ("deno" if DENO or shutil.which("deno") else 
 # When YouTube says "Sign in to confirm you're not a bot", other YouTube apps' ways in often still work.
 ALTS = [[], ["--extractor-args", "youtube:player_client=tv_simply,tv,web_safari"],
         ["--extractor-args", "youtube:player_client=mweb,android_vr,ios"]]
+# a computer: the cookies of a browser where the user is signed in to YouTube open the door too
+if not APK and os.environ.get("MAQATI_WEB") != "1":
+    ALTS += [["--cookies-from-browser", b] for b in (("firefox", "edge", "chrome") if sys.platform == "win32" else ("firefox", "chrome", "safari", "edge"))]
 _BLOCK = ("not a bot", "confirm you", "sign in to confirm", "--cookies", "po token", "po_token", "http error 403",
           "http error 429", "requested format is not available", "unable to extract", "precondition")
 
@@ -309,8 +312,11 @@ def yt_id(url):
     return m.group(1) if m else None
 
 
-def blocked_message():
-    return M("yt_blocked")
+def blocked_message(reason=""):
+    """What to tell the user when every way into YouTube failed (with yt-dlp's own last words, for diagnosis)."""
+    msg = M("yt_blocked" if APK else "yt_blocked_pc")
+    reason = re.sub(r"^\S*ERROR:\s*", "", (reason or "").strip().splitlines()[-1] if (reason or "").strip() else "")
+    return msg + (f"\n({reason[:160]})" if reason else "")
 
 
 def ytdlp_base(alt=0):
@@ -330,14 +336,21 @@ def ytdlp_base(alt=0):
     return cmd + ALTS[alt]
 
 
+_exe_ver = {"t": 0.0, "v": None}
+
+
 def ytdlp_version():
     """The version of the yt-dlp in use (read from the file, so an update shows at once)."""
-    if YTDLP_EXE:
+    if YTDLP_EXE:                                # a stand-alone program takes seconds to start: ask it once an hour
+        if time.time() - _exe_ver["t"] < 3600:
+            return _exe_ver["v"]
         try:
             out = subprocess.run([YTDLP_EXE, "--version"], capture_output=True, text=True, timeout=60, creationflags=NO_WINDOW)
-            return (out.stdout.strip().splitlines() or [None])[0]
+            v = (out.stdout.strip().splitlines() or [None])[0]
         except Exception:
-            return None
+            v = None
+        _exe_ver.update(t=time.time(), v=v)
+        return v
     if YTDLP:
         try:
             import zipfile
@@ -443,7 +456,7 @@ def link_info(url):
         from . import mirrors
         m = mirrors.lookup(yt_id(url))
         if not m:
-            raise RuntimeError(blocked_message())
+            raise RuntimeError(blocked_message(str(e)))
         return {"title": m["title"] or url, "duration": m["duration"], "thumb": m["thumb"], "site": "youtube",
                 "id": yt_id(url), "media": "video" if m["video"] else "audio", "heights": []}
     has_video = (j.get("vcodec") not in (None, "none")) or any(
@@ -540,7 +553,7 @@ def _ytdlp(url, out_template, want, height, cancel=None, progress=None, section=
             if not is_block(str(e)):
                 raise
     if err is not None:                                  # YouTube blocked every way in: try the free mirrors
-        return _mirror_download(url, out_template, want, height, cancel, progress, section)
+        return _mirror_download(url, out_template, want, height, cancel, progress, section, str(err))
     if not final:   # fallback: look for the newest finished file with the expected name
         t = Path(out_template)
         stem = t.name.split(".%(ext)s")[0]
@@ -624,7 +637,7 @@ def stream_urls(url, want, height=720):
         m = mirrors.lookup(yt_id(url))
         ins = mirrors.inputs(m, want, height) if m else []
         if not ins:
-            raise RuntimeError(blocked_message())
+            raise RuntimeError(blocked_message(str(e)))
         res = (ins, float(m["duration"] or 0))
         with _streams_lock:
             _streams[key] = (time.time(), res)
@@ -677,13 +690,13 @@ def section_from_stream(inputs, start, length, dst, mode, cancel=None, progress=
         raise RuntimeError(M("broken_file"))
 
 
-def _mirror_download(url, out_template, want, height, cancel, progress, section):
+def _mirror_download(url, out_template, want, height, cancel, progress, section, reason=""):
     """Download through a free mirror (only when YouTube blocks yt-dlp)."""
     from . import mirrors
     m = mirrors.lookup(yt_id(url))
     ins = mirrors.inputs(m, "audio" if want == "audio" else "video", height) if m else []
     if not ins:
-        raise RuntimeError(blocked_message())
+        raise RuntimeError(blocked_message(reason))
     dur = float(m["duration"] or 0)
     a, b = (section[0], section[1] or dur) if section else (0.0, dur)
     ext = "m4a" if want == "audio" else "mp4"
