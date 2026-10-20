@@ -131,7 +131,10 @@ const TX = {
   tr_choose: ['Choose a transcript', 'اختر التفريغ'], tr_showing: ['Showing', 'المعروض'],
   pin: ['Pin', 'تثبيت'], pinned: ['Pinned', 'مثبّت'], working_on: ['Working on now', 'قيد العمل الآن'],
   continue: ['Continue listening', 'أكمل الاستماع'],
-  more_opts: ['More', 'المزيد'], unlock_s: ['Unlock', 'فتح القفل'], unpin: ['Unpin', 'إلغاء التثبيت'], select: ['Select', 'تحديد'], note: ['Note', 'ملاحظة'], speed: ['Speed', 'السرعة'],
+  more_opts: ['More', 'المزيد'], my_works: ['My works', 'أعمالي'], my_works_s: ['Cuts & transcripts', 'المقاطع والتفريغات'],
+  works_all_p: ['Every cut and transcript from all your lessons. Choose a folder or a type; tap one to play, save, rename, re-cut or add it to a project.', 'كل مقاطعك وتفريغاتك من كل الدروس. اختر مجلدًا أو نوعًا، واضغط أيًّا منها للتشغيل أو الحفظ أو إعادة التسمية أو القص أو إضافته لمشروع.'],
+  t_now: ['Now', 'الحالية'], t_done: ['Finished', 'المنجزة'], no_done: ['Finished tasks appear here.', 'تظهر هنا المهام المنجزة.'],
+  rmd_next: ['Next reminder', 'التذكير التالي'], s_rmd: ['Verses and hadiths banner (tap it for the next)', 'شريط الآيات والأحاديث (اضغطه للتالي)'], unlock_s: ['Unlock', 'فتح القفل'], unpin: ['Unpin', 'إلغاء التثبيت'], select: ['Select', 'تحديد'], note: ['Note', 'ملاحظة'], speed: ['Speed', 'السرعة'],
   sec_marks_s: ['Parts', 'المقاطع'], sec_tr_s: ['Transcript', 'التفريغ'], sec_notes_s: ['Benefits', 'الفوائد'], sec_files_s: ['Files', 'الملفات'],
   lan_t: ['Open from an iPhone or another device', 'فتح من الآيفون أو جهاز آخر'],
   lan_p: ['Use Maqati from an iPhone, tablet or computer on the same Wi-Fi. Everything works, downloads too: this phone does the work.', 'استعمل «مقاطع» من آيفون أو تابلت أو كمبيوتر على نفس شبكة الواي فاي. كل شيء يعمل حتى التحميل: هذا الهاتف يقوم بالعمل.'],
@@ -274,7 +277,7 @@ async function loadLib() { const st = await api('/api/state'); S.folders = st.fo
 const ROUTES = [
   [/^#\/lib$/, () => vLibrary()], [/^#\/lib\/f\/(\w+)(?:\/(\w+))?$/, m => vFolder(m[1], m[2])], [/^#\/item\/(\d+)(?:\/(\d+(?:\.\d+)?))?$/, m => vItem(+m[1], m[2] ? +m[2] : null)],
   [/^#\/search$/, () => vSearch()], [/^#\/projects$/, () => vProjects()], [/^#\/project\/(\d+)$/, m => vProject(+m[1])],
-  [/^#\/tasks$/, () => vTasks()], [/^#\/settings$/, () => vSettings()], [/^#\/help$/, () => vHelp()],
+  [/^#\/tasks(?:\/(\w+))?$/, m => vTasks(m[1])], [/^#\/works$/, () => vFolder('all', 'works', true)], [/^#\/settings$/, () => vSettings()], [/^#\/help$/, () => vHelp()],
 ];
 async function route() {
   const h = location.hash || '#/lib';
@@ -282,7 +285,7 @@ async function route() {
   S.pick = null;
   const hit = ROUTES.find(([rx]) => rx.test(h));
   if (!hit) { location.hash = '#/lib'; return; }
-  const v = view(); v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter');
+  const v = view(); if (!pollJobs.busy) { v.classList.remove('enter'); void v.offsetWidth; v.classList.add('enter'); }
   clearTimeout(route.t); route.t = setTimeout(() => v.classList.remove('enter'), 900);
   await hit[1](h.match(hit[0]));
   $('#backBtn').hidden = !/^#\/(lib\/f|item|project\/|help|search)/.test(h);
@@ -571,6 +574,13 @@ function folderCard(id, name, icon, color, n) {
   return `<a class="fcard" href="#/lib/f/${id}" style="--fc:${esc(color || 'var(--acc)')}"><div class="fi">${esc(icon)}</div><b dir="auto">${esc(name)}</b><small>${t('items_n', n)}</small></a>`;
 }
 const fabHTML = () => `<button class="fab" data-act="add"><b>＋</b> ${t('add')}</button>`;
+function reminderHTML() {
+  const R = window.REMINDERS || []; if (!R.length || S.set.reminders === false) return '';
+  let i = store.get('rmi', Math.floor(Math.random() * R.length));
+  if (Date.now() - store.get('rmt', 0) > 10 * 60000) { i = (i + 1) % R.length; store.set('rmi', i); store.set('rmt', Date.now()); }
+  const x = R[i % R.length];
+  return `<button class="rmd ${x.k}" data-act="rmd-next" aria-label="${t('rmd_next')}"><span class="rt">${x.k === 'q' ? `﴿${esc(x.t)}﴾` : `«${esc(x.t)}»`}</span><small>${esc(x.r)}</small></button>`;
+}
 function heroCard() {
   const pinned = S.items.filter(i => i.pinned).sort((a, b) => b.pinned - a.pinned)[0];
   const it = pinned || S.items.find(i => i.id === store.get('last', null));
@@ -586,13 +596,14 @@ function heroCard() {
 async function vLibrary() {
   await loadLib();
   const n = f => S.items.filter(i => f === 'all' ? true : f === 'none' ? !i.folder_id : i.folder_id === f).length;
-  view().innerHTML = `${heroCard()}
+  view().innerHTML = `${heroCard()}${reminderHTML()}
     <div class="h"><h2>${t('library')}</h2><div class="grow"></div>
       <div class="segc viewsw"><button type="button" data-act="lib-view" data-v="grid" class="${store.get('libView', 'grid') === 'grid' ? 'on' : ''}" aria-label="grid">▦</button><button type="button" data-act="lib-view" data-v="list" class="${store.get('libView', 'grid') === 'list' ? 'on' : ''}" aria-label="list">☰</button></div>
       </div>
     ${S.items.filter(i => i.pinned).length > 1 ? `<div class="sectitle">📍 ${t('working_on')}</div><div class="list pinlist">${S.items.filter(i => i.pinned).sort((a, b) => b.pinned - a.pinned).slice(1).map(itemRow).join('')}</div>` : ''}
     <div class="folders ${store.get('libView', 'grid') === 'list' ? 'aslist' : ''}">
-      ${folderCard('all', t('all_items'), '🗂️', '#5b6b73', n('all'))}
+      ${folderCard('all', t('all_items'), '🗂️', '#4A5A66', n('all'))}
+      <a class="${store.get('libView', 'grid') === 'list' ? 'li frow2' : 'fcard'} works" href="#/works" style="--fc:var(--gold)"><div class="${store.get('libView', 'grid') === 'list' ? 'th fi' : 'fi'}">📦</div><b>${t('my_works')}</b><small>${t('my_works_s')}</small></a>
       ${folderCard('none', t('unsorted'), '📄', '#8a7a5c', n('none'))}
       ${S.folders.map(f => folderCard(f.id, f.name, f.icon || '📁', f.color, n(f.id))).join('')}
       ${store.get('libView', 'grid') === 'list' ? `<button class="li frow2 new" data-act="new-folder"><div class="th fi">＋</div><div class="tt"><b>${t('new_folder')}</b></div></button>` : `<button class="fcard new" data-act="new-folder"><div class="fi">＋</div><b>${t('new_folder')}</b></button>`}
@@ -601,18 +612,18 @@ async function vLibrary() {
       : `<div class="empty"><div class="big">📚</div><h3>${t('empty_lib')}</h3><p>${t('empty_lib_p')}</p><button class="btn pri big" data-act="add">＋ ${t('add')}</button></div>`}
     ${fabHTML()}`;
 }
-async function vFolder(fid, tab) {
+async function vFolder(fid, tab, mine) {
   tab = tab || 'lessons';
   await loadLib();
   const f = S.folders.find(x => String(x.id) === fid);
-  const name = fid === 'all' ? t('all_items') : fid === 'none' ? t('unsorted') : f ? f.name : '?';
-  const icon = fid === 'all' ? '🗂️' : fid === 'none' ? '📄' : (f && f.icon) || '📁';
+  const name = mine ? t('my_works') : fid === 'all' ? t('all_items') : fid === 'none' ? t('unsorted') : f ? f.name : '?';
+  const icon = mine ? '📦' : fid === 'all' ? '🗂️' : fid === 'none' ? '📄' : (f && f.icon) || '📁';
   const tabs = [['lessons', '🎧', 'tab_lessons'], ['works', '📦', 'tab_works'], ['parts', '✂️', 'tab_parts'], ['ex', '📌', 'tab_ex']];
   view().innerHTML = `
     <div class="crumbs"><a href="#/lib">${t('library')}</a> ${SEP()}</div>
     <div class="h"><h2>${esc(icon)} <span dir="auto">${esc(name)}</span></h2><div class="grow"></div>
-      <button class="ib more" data-act="folder-menu" data-id="${fid}" aria-label="${t('more_opts')}">${ICON('dots')}</button></div>
-    <div class="ftabs">${tabs.map(([k, i, n]) => `<a href="#/lib/f/${fid}/${k}" class="${tab === k ? 'on' : ''}">${i} ${t(n)}</a>`).join('')}</div>
+      ${mine ? '' : `<button class="ib more" data-act="folder-menu" data-id="${fid}" aria-label="${t('more_opts')}">${ICON('dots')}</button>`}</div>
+    ${mine ? `<p class="muted small" style="margin:-8px 2px 12px">${t('works_all_p')}</p>` : `<div class="ftabs">${tabs.map(([k, i, n]) => `<a href="#/lib/f/${fid}/${k}" class="${tab === k ? 'on' : ''}">${i} ${t(n)}</a>`).join('')}</div>`}
     <div id="fbody"></div>${fabHTML()}`;
   if (tab === 'lessons') {
     let list = S.items.filter(i => fid === 'all' ? true : fid === 'none' ? !i.folder_id : String(i.folder_id) === fid);
@@ -629,10 +640,13 @@ async function vFolder(fid, tab) {
   const c = await api(`/api/folders/${fid}/contents`);
   S.fc = c;
   if (tab === 'works') {
-    const ft = S.wf || 'all', ws = c.works.filter(w => ft === 'all' || w.type === ft);
+    const ff = mine ? (S.wfold || 'all') : 'all', inF = w => { const it = S.items.find(i => i.id === w.item_id); return ff === 'all' || String(it ? it.folder_id || 'none' : 'none') === String(ff); };
+    const ft = S.wf || 'all', ws = c.works.filter(w => (ft === 'all' || w.type === ft) && inF(w));
     const when = w => w.start != null && w.end ? `<button class="chip when" data-act="play-at" data-item="${w.item_id}" data-t="${w.start}">▶ ${rng(w.start, w.end)}</button>` : '';
-    const n = k => c.works.filter(w => k === 'all' || w.type === k).length;
-    $('#fbody').innerHTML = `<p class="muted small">${t('works_p')}</p>
+    const n = k => c.works.filter(w => (k === 'all' || w.type === k) && inF(w)).length;
+    $('#fbody').innerHTML = `${mine ? '' : `<p class="muted small">${t('works_p')}</p>`}
+      ${mine && S.folders.length ? `<div class="chips scroll" style="margin-bottom:10px">${[['all', t('all_items')], ...S.folders.map(f => [f.id, f.name]), ['none', t('unsorted')]].map(([k, l]) =>
+        `<button class="chip ${String(ff) === String(k) ? 'on' : ''}" data-act="wfold" data-k="${k}"><span dir="auto">${esc(l)}</span></button>`).join('')}</div>` : ''}
       <div class="toolbar">${segc('wf', ft, [['all', `${t('w_all')} ${n('all')}`], ['tr', `📝 ${t('w_tr')} ${n('tr')}`], ['audio', `🎵 ${t('w_audio')} ${n('audio')}`], ['video', `🎬 ${t('w_video')} ${n('video')}`]], 'data-wf')}</div>
       ${ws.length ? `<div class="card pad">${ws.map(w => w.type === 'tr'
         ? fileRow({ path: w.path || '', name: w.name, sub: esc(nice(w.item_title || '')), icon: IC.doc, noOpen: true, when: when(w), locked: w.locked,
@@ -640,7 +654,7 @@ async function vFolder(fid, tab) {
             btns: `<button class="ibtn" data-act="open-tr" data-item="${w.item_id}" data-k="${w.id}" aria-label="open">${IC.doc}</button><button class="ibtn" data-act="export-tr" data-tid="${w.id}" data-title="${esc(w.name)}" aria-label="export">📕</button>` })
         : fileRow({ path: w.path, name: w.name, size: w.size, clip: true, sub: esc(nice(w.item_title || '')), when: when(w), locked: w.locked })).join('')}</div>`
         : `<div class="empty"><div class="big">📦</div><p>${t('works_empty')}</p></div>`}`;
-    $$('[data-wf] button').forEach(b => b.onclick = () => { S.wf = b.dataset.v; vFolder(fid, tab); });
+    $$('[data-wf] button').forEach(b => b.onclick = () => { S.wf = b.dataset.v; vFolder(fid, tab, mine); });
     return;
   }
   if (tab === 'parts') {
@@ -1434,15 +1448,19 @@ async function clipSheet(path) {
 }
 
 /* ================= tasks ================= */
-async function vTasks() {
-  view().innerHTML = `<div class="h"><h2>⏳ ${t('tasks')}</h2></div>
-    <div class="toolbar"><button class="btn" data-act="jobs-all" data-op="pause">⏸ ${t('pause_all')}</button><button class="btn" data-act="jobs-all" data-op="resume">▶ ${t('resume_all')}</button>
-      <button class="btn ghost" data-act="jobs-clear">🧹 ${t('clear_done')}</button></div><div id="jobs"></div>`;
-  await pollJobs();
+async function vTasks(tab) {
+  S.ttab = tab === 'done' ? 'done' : 'now';
+  view().innerHTML = `<div class="h"><h2>⏳ ${t('tasks')}</h2><div class="grow"></div><button class="ib more" data-act="tasks-menu" aria-label="${t('more_opts')}">${ICON('dots')}</button></div>
+    ${reminderHTML()}
+    <div class="ftabs" id="ttabs"></div><div id="jobs"></div>`;
+  await pollJobs(); renderJobs();
 }
 function renderJobs() {
   const box = $('#jobs'); if (!box) return;
-  box.innerHTML = S.jobs.map(j => {
+  const isDone = j => j.status === 'done' || j.status === 'cancelled', now = S.jobs.filter(j => !isDone(j)), done = S.jobs.filter(isDone);
+  const tt = $('#ttabs'); if (tt) tt.innerHTML = `<a href="#/tasks" class="${S.ttab !== 'done' ? 'on' : ''}">${t('t_now')} <small>${now.length || ''}</small></a><a href="#/tasks/done" class="${S.ttab === 'done' ? 'on' : ''}">${t('t_done')} <small>${done.length || ''}</small></a>`;
+  const list = S.ttab === 'done' ? done : now;
+  box.innerHTML = (S.ttab === 'done' && done.length ? `<a class="btn soft wide" href="#/works" style="margin-bottom:10px">📦 ${t('my_works')}</a>` : '') + list.map(j => {
     const pct = Math.round((j.progress || 0) * 100);
     const b = j.status === 'running' || j.status === 'queued' ? `<button class="btn" data-act="job" data-op="pause">⏸ ${t('pause')}</button><button class="btn ghost danger" data-act="job" data-op="cancel">✕ ${t('cancel')}</button>`
       : j.status === 'paused' ? `<button class="btn pri" data-act="job" data-op="resume">▶ ${t('resume')}</button><button class="btn ghost danger" data-act="job" data-op="cancel">✕ ${t('cancel')}</button>`
@@ -1451,7 +1469,7 @@ function renderJobs() {
     return `<div class="job ${j.status} ${j.item_id ? 'tap' : ''}" data-j="${j.id}" ${j.item_id ? `data-item="${j.item_id}"` : ''}><div class="jt"><b dir="auto">${esc(nice(j.title))}</b><span class="st ${j.status}">${t('st_' + j.status)}</span></div>
       ${j.status === 'running' || (j.status === 'paused' && pct) ? `<div class="bar"><i style="width:${pct}%"></i></div>` : ''}
       <div class="msg" dir="auto">${esc(j.message || '')}</div>${j.eta || j.taken ? `<div class="eta">⏱ ${j.status === 'done' ? tookTxt(j) : leftTxt(j)}</div>` : ''}${b ? `<div class="btns">${b}</div>` : ''}</div>`;
-  }).join('') || `<div class="empty"><div class="big">⏳</div><p>${t('no_tasks')}</p></div>`;
+  }).join('') || `<div class="empty"><div class="big">${S.ttab === 'done' ? '✅' : '⏳'}</div><p>${t(S.ttab === 'done' ? 'no_done' : 'no_tasks')}</p></div>`;
 }
 let lastSig = '', doneSeen = null;
 async function pollJobs() {
@@ -1504,7 +1522,7 @@ async function vSettings() {
       <div class="field"><label>${t('f_head')}</label>${fontSeg('font_head', s.font_head || s.font_ui || 'tajawal', 'data-set')}</div>
       <div class="field"><label>${t('f_read')}</label>${fontSeg('font_read', s.font_read || 'amiri', 'data-set')}
         <p class="fprev" style="font-family:${fstack(s.font_read || 'amiri')}">الحمد لله رب العالمين، والصلاة والسلام على نبينا محمد.</p></div></div>
-    <div class="card pad"><h3>🤲 ${t('s_dhikr')}</h3><p class="muted small">${t('dhikr_p')}</p>${sg('dhikr', s.dhikr ?? 15, [[0, t('off')], [10, t('m10')], [15, t('m15')]])}</div>
+    <div class="card pad"><h3>🤲 ${t('s_dhikr')}</h3><p class="muted small">${t('dhikr_p')}</p>${sg('dhikr', s.dhikr ?? 15, [[0, t('off')], [10, t('m10')], [15, t('m15')]])}${sw('reminders', t('s_rmd'))}</div>
     <div class="card pad"><h3>📝 ${t('s_tr')}</h3>
       <div class="field"><label>${t('s_engine')}</label><select data-set-sel="engine"><option value="groq" ${s.engine === 'groq' ? 'selected' : ''}>${t('engine_groq')}</option>
         ${h.android ? '' : `<option value="local" ${s.engine === 'local' ? 'selected' : ''}>${t('engine_local')}</option>`}</select></div>
@@ -1605,6 +1623,9 @@ const ACT = {
   back: () => history.length > 1 ? history.back() : (location.hash = '#/lib'),
   add: () => addSheet(),
   'lan-new': async () => { lanShow(await post('/api/lan', { on: true, new_code: true })); toast(t('saved')); },
+  wfold: el => { S.wfold = el.dataset.k; vFolder('all', 'works', true); },
+  'rmd-next': el => { const R = window.REMINDERS || []; const i = (store.get('rmi', 0) + 1) % R.length; store.set('rmi', i); store.set('rmt', Date.now());
+    el.classList.add('out'); setTimeout(() => { const n = document.createElement('div'); n.innerHTML = reminderHTML(); el.replaceWith(n.firstElementChild); }, 180); },
   'theme-toggle': () => saveSet({ theme: document.documentElement.classList.contains('isdark') ? 'light' : 'dark' }),
   'new-folder': async () => { const id = await customizeFolder(null); if (id) location.hash = '#/lib/f/' + id; },
   'custom-folder': async el => { await loadLib(); const f = S.folders.find(x => x.id === +el.dataset.id); if (await customizeFolder(f)) route(); },
@@ -1642,6 +1663,8 @@ const ACT = {
   bm: () => bookmarkHere(), mstart: () => markStart(), mend: () => markEnd(),
   // item
   itab: el => showTab(el.dataset.k),
+  'tasks-menu': () => sheet(t('tasks'), `<div class="menu"><button class="mi" data-act="jobs-all" data-op="pause" value="x">⏸ ${t('pause_all')}</button>
+      <button class="mi" data-act="jobs-all" data-op="resume" value="x">▶ ${t('resume_all')}</button><button class="mi" data-act="jobs-clear" value="x">🧹 ${t('clear_done')}</button></div>`),
   'folder-menu': el => { const fid = el.dataset.id, real = /^\d+$/.test(fid);
     sheet(t('more_opts'), `<div class="menu">
       ${real ? `<button class="mi" data-act="custom-folder" data-id="${fid}" value="x">🎨 ${t('customize')}</button>` : ''}

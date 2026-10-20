@@ -83,6 +83,7 @@ DEFAULT_SETTINGS = {
     "font_read": "amiri",   # transcripts and reading
     "reencode_video": False, # video parts: False = instant copy with exact start/end marks; True = re-encode
     "dhikr": 15,            # minutes between the small reminder (0 = off)
+    "reminders": True,      # the small banner of verses and hadiths
     "lan_on": False,        # open from an iPhone or another device on the same Wi-Fi
     "lan_code": "",         # the 6-digit code that device must type once
 }

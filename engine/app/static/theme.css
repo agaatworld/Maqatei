@@ -328,3 +328,16 @@ html{font-size:calc(14.5px * var(--scale,1))}
 .ctl .ib:not(.play) em{position:absolute;top:50%;left:50%;transform:translate(-50%,-44%);font-size:.6rem;font-weight:700;color:var(--ink);line-height:1}
 .ctl .ib em::after{content:''!important}
 .skflash svg{stroke-width:1.8}
+
+/* ---------- reminders: one small banner of a verse or a hadith ---------- */
+.rmd{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%;margin:12px 0 4px;padding:10px 14px;border-radius:16px;border:1px solid color-mix(in srgb,var(--gold-hi) 35%,var(--line));background:color-mix(in srgb,var(--gold-hi) 9%,var(--card));color:var(--ink);font:inherit;text-align:center;cursor:pointer;transition:opacity .18s,transform .18s var(--ease)}
+.rmd .rt{font-family:Amiri,"Traditional Arabic",serif;font-size:1.08rem;line-height:1.9}
+.rmd.q .rt{color:color-mix(in srgb,var(--ink) 88%,var(--gold))}
+.rmd small{font-size:.72rem;color:var(--gold)}
+.rmd:active{transform:scale(.98)}
+.rmd.out{opacity:0;transform:translateY(-4px)}
+.view.enter .rmd{animation:rise .5s var(--ease) both .1s}
+/* My works card and the small counts on tabs */
+.fcard.works .fi{color:var(--gold);background:color-mix(in srgb,var(--gold-hi) 18%,var(--card))}
+.ftabs a small{font-size:.72rem;color:var(--muted);margin-inline-start:4px}
+.ftabs a.on small{color:var(--acc)}

@@ -58,7 +58,7 @@ def route(method, pattern):
 def index(r):
     """The page, with each script/style address stamped by its file time, so a phone never keeps an old copy."""
     html = (STATIC / "index.html").read_text(encoding="utf-8")
-    for name in ("app.js", "style.css", "fonts.css", "theme.css", "icons.js"):
+    for name in ("app.js", "style.css", "fonts.css", "theme.css", "icons.js", "reminders.js"):
         stamp = int((STATIC / name).stat().st_mtime)
         html = html.replace(f"/static/{name}\"", f"/static/{name}?v={stamp}\"")
     return Raw(html.encode("utf-8"), "text/html; charset=utf-8")
