@@ -205,6 +205,8 @@ def _setup():
     mirrors.requests = _Requests
     mirrors.ThreadPoolExecutor = _Executor
     mirrors.lookup = _lookup
+    # when every free mirror fails, the web version says the truth (no browser can open YouTube itself)
+    media.blocked_message = lambda reason="": YT_WEB_FAIL + (f"\n({reason.strip().splitlines()[-1][:120]})" if reason and reason.strip() else "")
     transcribe.requests = _Requests
     transcribe._sleep = lambda *a, **kw: None     # the page itself waits before asking the service again
     real_probe = media.probe
@@ -256,6 +258,7 @@ class _Headers(dict):
 
 RAW_PATHS = ("/api/upload", "/api/update/upload", "/api/cookies")
 ONLY_YT = "في نسخة الويب تعمل روابط يوتيوب فقط. لمواقع أخرى استخدم تطبيق الأندرويد أو الكمبيوتر، أو أضف الدرس كملف. / On the web version only YouTube links work; for other sites use the Android or desktop app, or add the lesson as a file."
+YT_WEB_FAIL = "تعذّر فتح رابط يوتيوب من نسخة الويب الآن: الخوادم الوسيطة المجانية معطّلة، والمتصفح لا يستطيع فتح يوتيوب بنفسه. استخدم تطبيق الأندرويد أو الكمبيوتر للروابط، أو أضف الدرس كملف. / YouTube can't be opened from the web version right now: the free mirror servers are down and a browser can't reach YouTube itself. Use the Android or desktop app for links, or add the lesson as a file."
 OFF_HERE = {"/api/update-downloader": "", "/api/lan": "", "/api/import-old": "", "/api/open-folder": "",
             "/api/test-mirrors": "", "/api/cookies": ""}
 
