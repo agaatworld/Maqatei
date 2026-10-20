@@ -447,6 +447,19 @@ def _json(url, extra, timeout=150):
     raise RuntimeError(err)
 
 
+def link_heights(url, timeout=25):
+    """The picture sizes a link offers, asked once and quickly (the quality menu must not wait on a blocked site)."""
+    try:
+        out = subprocess.run(ytdlp_base(0) + ["-J", "--skip-download", url], capture_output=True, text=True, encoding="utf-8",
+                             errors="replace", timeout=timeout, creationflags=NO_WINDOW, env=UTF8_ENV)
+        if out.returncode != 0:
+            return None
+        j = json.loads(out.stdout)
+        return sorted({int(f["height"]) for f in j.get("formats") or [] if f.get("height") and f.get("vcodec") not in (None, "none")}, reverse=True)
+    except Exception:
+        return None
+
+
 def link_info(url):
     try:
         j = _json(url, ["--skip-download"])

@@ -765,7 +765,7 @@ async function qMenu(el, itemId, fmtk, pick) {
   (document.querySelector('dialog[open]') || document.body).appendChild(box); placeQ(box, el);
   S.qc = S.qc || {};
   let q = S.qc[itemId];
-  if (!q) { q = await api(`api/items/${itemId}/qualities?probe=1`).catch(() => null); if (q) S.qc[itemId] = q; }
+  if (!q) { q = await Promise.race([api(`api/items/${itemId}/qualities?probe=1`).catch(() => null), new Promise(r => setTimeout(() => r(null), 8000))]); if (q) S.qc[itemId] = q; }   // never wait long: the standard list is better than no list
   if (!box.isConnected) return;
   q = q || { video: [1080, 720, 480, 360, 240, 144], audio: [0, 192, 128, 96, 64], top: 0 };
   const tag = h => h >= 1080 ? ' · Full HD' : h >= 720 ? ' · HD' : h <= 240 ? ` · ${t('q_small')}` : '';

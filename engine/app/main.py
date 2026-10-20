@@ -306,12 +306,10 @@ def qualities(r, iid):
         site = json.loads(i.get("heights") or "[]")
     except ValueError:
         site = []
-    if i["url"] and i["media"] == "video" and not site and r.query.get("probe") == "1":
-        try:                                           # older links: ask the site once and remember
-            site = media.link_info(i["url"]).get("heights") or []
+    if i["url"] and i["media"] == "video" and not site and r.query.get("probe") == "1" and not local_h:
+        site = media.link_heights(i["url"]) or []         # older links: ask the site once, quickly, and remember
+        if site:
             db.run("UPDATE items SET heights=? WHERE id=?", (json.dumps(site), i["id"]))
-        except Exception:
-            site = []
     top = max([local_h] + site) if (local_h or site) else 0
     if i["media"] != "video":
         video = []
