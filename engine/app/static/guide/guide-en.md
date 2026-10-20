@@ -2,16 +2,15 @@
 
 Maqati keeps your video and audio lessons in one place. You can cut any part with one tap, transcribe it into precise Arabic text, write your benefits, and export everything as a well-organised book. It all runs on your own phone and keeps working in the background.
 
-## 1. Make it a real app
+## 1. Install (once)
 
-1. In Chrome: **⋮ → Install app** (or Add to Home screen → Install). Maqati gets its own icon and opens in its own window.
-2. It **starts by itself when the phone turns on** (open Termux once after installing so Android allows it).
-3. If you open the icon while Maqati is stopped, a page with **Open Termux** appears; tap it, come back, and the app loads.
+No Termux, no commands.
 
-## 1b. Every day
-
-1. Tap the **Maqati** icon. If it says it is stopped, tap **Open Termux** and come back.
-2. Keep the Termux notification. It is what keeps downloads and transcriptions running while you use other apps.
+1. Open **github.com/beaconcrest8/maqati/releases** and download the file ending in `arm64-v8a.apk`.
+2. Open it and tap **Install** (allow installing from this source if asked).
+3. Open Maqati. The first time, allow **files**, **notifications** and **background work**. The first start takes about a minute.
+4. While something runs, a Maqati notification shows the progress. It keeps working with the screen off; unfinished work continues after a restart.
+5. From YouTube: **Share → Maqati** adds the lesson to your library.
 
 ## 2. Library and folders
 
@@ -70,4 +69,4 @@ A project collects the parts about one topic from many lessons. Reorder with ▲
 
 ## 11. Updating
 
-Download the new `maqati.zip`, then **⚙️ Settings → Update → Find update in Downloads → Install update**. The app restarts by itself and your library stays as it is.
+The app checks for updates once a day and asks before installing. Or: **⚙️ Settings → Update → Find update**. Your library and settings stay as they are. The YouTube downloader updates itself daily.

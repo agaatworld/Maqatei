@@ -1,15 +1,13 @@
 <h1>How to use Maqati</h1>
 <p>Maqati keeps your video and audio lessons in one place. You can cut any part with one tap, transcribe it into precise Arabic text, write your benefits, and export everything as a well-organised book. It all runs on your own phone and keeps working in the background.</p>
-<h2>1. Make it a real app</h2>
+<h2>1. Install (once)</h2>
+<p>No Termux, no commands.</p>
 <ol>
-<li>In Chrome: <strong>⋮ → Install app</strong> (or Add to Home screen → Install). Maqati gets its own icon and opens in its own window.</li>
-<li>It <strong>starts by itself when the phone turns on</strong> (open Termux once after installing so Android allows it).</li>
-<li>If you open the icon while Maqati is stopped, a page with <strong>Open Termux</strong> appears; tap it, come back, and the app loads.</li>
-</ol>
-<h2>1b. Every day</h2>
-<ol>
-<li>Tap the <strong>Maqati</strong> icon. If it says it is stopped, tap <strong>Open Termux</strong> and come back.</li>
-<li>Keep the Termux notification. It is what keeps downloads and transcriptions running while you use other apps.</li>
+<li>Open <strong>github.com/beaconcrest8/maqati/releases</strong> and download the file ending in <code>arm64-v8a.apk</code>.</li>
+<li>Open it and tap <strong>Install</strong> (allow installing from this source if asked).</li>
+<li>Open Maqati. The first time, allow <strong>files</strong>, <strong>notifications</strong> and <strong>background work</strong>. The first start takes about a minute.</li>
+<li>While something runs, a Maqati notification shows the progress. It keeps working with the screen off; unfinished work continues after a restart.</li>
+<li>From YouTube: <strong>Share → Maqati</strong> adds the lesson to your library.</li>
 </ol>
 <h2>2. Library and folders</h2>
 <p><img loading="lazy" alt="Library" src="/static/guide/library.jpg" /></p>
@@ -48,4 +46,4 @@
 <p><img loading="lazy" alt="Project" src="/static/guide/project.jpg" /></p>
 <p>A project collects the parts about one topic from many lessons. Reorder with ▲▼. <strong>Download all clips (ZIP)</strong> cuts them, numbered and named, with a Word book of their transcripts.</p>
 <h2>11. Updating</h2>
-<p>Download the new <code>maqati.zip</code>, then <strong>⚙️ Settings → Update → Find update in Downloads → Install update</strong>. The app restarts by itself and your library stays as it is.</p>
+<p>The app checks for updates once a day and asks before installing. Or: <strong>⚙️ Settings → Update → Find update</strong>. Your library and settings stay as they are. The YouTube downloader updates itself daily.</p>
