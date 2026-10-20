@@ -62,18 +62,55 @@ for _ in range(150):
     except Exception:
         time.sleep(0.2)
 
-try:
-    import webview
-    webview.settings["ALLOW_DOWNLOADS"] = True
-    webview.create_window("مقاطع · Maqati", URL, width=1280, height=840, min_size=(860, 600))
-    webview.start()
-except Exception:                           # no window library: the normal browser instead
-    webbrowser.open(URL)
+
+
+def browser():
+    """Edge or Chrome, if installed: the app opens in its own window (fast, nothing to install)."""
+    import shutil
+    cands = []
+    if sys.platform == "win32":
+        for base in (os.environ.get("PROGRAMFILES"), os.environ.get("PROGRAMFILES(X86)"), os.environ.get("LOCALAPPDATA")):
+            if base:
+                cands += [Path(base) / "Microsoft" / "Edge" / "Application" / "msedge.exe", Path(base) / "Google" / "Chrome" / "Application" / "chrome.exe"]
+    elif sys.platform == "darwin":
+        cands += [Path("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"), Path("/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge")]
+    else:
+        cands += [Path(p) for p in (shutil.which("google-chrome"), shutil.which("chromium"), shutil.which("chromium-browser"), shutil.which("microsoft-edge")) if p]
+    return next((str(c) for c in cands if c.exists()), None)
+
+
+def idle_exit():
+    """No page open for two minutes and nothing running: stop (the window was closed)."""
+    while True:
+        time.sleep(15)
+        busy = engine.db.one("SELECT 1 FROM jobs WHERE status IN ('running','queued')")
+        if time.time() - engine.LAST > 120 and not busy:
+            os._exit(0)
+
+
+exe = browser()
+if exe:
+    import subprocess
+    prof = DATA / "browser"
+    prof.mkdir(exist_ok=True)
+    p = subprocess.Popen([exe, f"--app={URL}", "--start-maximized", f"--user-data-dir={prof}", "--no-first-run", "--no-default-browser-check"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    threading.Thread(target=idle_exit, daemon=True).start()
+    p.wait()
+    time.sleep(2)
+    busy = engine.db.one("SELECT 1 FROM jobs WHERE status IN ('running','queued')")
+    while busy:                                 # the window closed while something runs: finish it first
+        time.sleep(10)
+        busy = engine.db.one("SELECT 1 FROM jobs WHERE status IN ('running','queued')")
+else:
     try:
-        while True:
-            time.sleep(3600)
-    except KeyboardInterrupt:
-        pass
+        import webview
+        webview.settings["ALLOW_DOWNLOADS"] = True
+        webview.create_window("مقاطع · Maqati", URL, width=1280, height=840, min_size=(860, 600), maximized=True)
+        webview.start()
+    except Exception:                           # no window library: the normal browser instead
+        webbrowser.open(URL)
+        idle_exit()
 engine.jobs.stop_all()
 time.sleep(0.5)
 os._exit(0)

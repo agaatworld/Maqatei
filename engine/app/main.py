@@ -23,6 +23,7 @@ ANDROID = "com.termux" in os.environ.get("PREFIX", "") or os.path.exists("/syste
 APK = media.APK                                  # running inside the Maqati Android app (no Termux)
 HOSTED = os.environ.get("MAQATI_HOSTED") == "1"   # running behind the multi-user gateway on a shared server
 DESKTOP = os.environ.get("MAQATI_DESKTOP") == "1" # the Windows / Mac app (desktop/maqati_desktop.py)
+LAST = time.time()                                # when the page last asked for something (the desktop app stops when idle)
 for ext, t in {".m4a": "audio/mp4", ".mp3": "audio/mpeg", ".webm": "video/webm", ".mkv": "video/x-matroska",
                ".opus": "audio/ogg", ".srt": "text/plain", ".txt": "text/plain", ".webmanifest": "application/manifest+json",
                ".js": "text/javascript", ".css": "text/css"}.items():
@@ -1124,6 +1125,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_HEAD(self): self.handle_any("GET", head=True)
 
     def handle_any(self, method, head=False):
+        global LAST
+        LAST = time.time()
         u = urlparse(self.path)
         self.query = {k: v[-1] for k, v in parse_qs(u.query).items()}
         self.body = {}

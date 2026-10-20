@@ -13,7 +13,7 @@ const TX = {
   library: ['Library', 'المكتبة'], search: ['Search', 'البحث'], projects: ['Projects', 'المشاريع'], tasks: ['Tasks', 'المهام'],
   settings: ['Settings', 'الإعدادات'], help: ['How to use', 'دليل الاستخدام'],
   all_items: ['All', 'الكل'], unsorted: ['Unsorted', 'غير مصنّف'], new_folder: ['New folder', 'مجلد جديد'],
-  home: ['Home', 'البداية'], now_running: ['Running now', 'جارٍ الآن'], nothing_running: ['Nothing is running. Cuts and transcriptions you start will show here.', 'لا شيء يعمل الآن. ما تبدؤه من قصّ أو تفريغ يظهر هنا.'],
+  home: ['Home', 'البداية'], menu: ['Menu', 'القائمة'], now_running: ['Running now', 'جارٍ الآن'], nothing_running: ['Nothing is running. Cuts and transcriptions you start will show here.', 'لا شيء يعمل الآن. ما تبدؤه من قصّ أو تفريغ يظهر هنا.'],
   recent_works: ['Your latest works', 'أحدث أعمالك'], your_folders: ['Your folders', 'مجلداتك'], see_all: ['All', 'الكل'], home_search_ph: ['Search every transcript…', 'ابحث في كل التفريغات…'],
   first_lesson: ['Add your first lesson', 'أضف أول درس'], first_lesson_p: ['A recording from your device, or a link.', 'تسجيلًا من جهازك أو رابطًا.'],
   recent: ['Recently added', 'أُضيف مؤخرًا'], items_n: ['{0} items', '{0} عناصر'], add: ['Add', 'إضافة'],
@@ -132,7 +132,7 @@ const TX = {
   saved: ['Saved ✓', 'حُفظ ✓'], test_tr: ['Test transcription now', 'اختبر التفريغ الآن'], yes: ['Yes', 'نعم'], ok: ['OK', 'حسنًا'],
   done_lock: ['Done', 'مُنجز'], lock_ok: ['Confirm: done & lock', 'تأكيد: مُنجز وقفل'], unlock_ok: ['Confirm: unlock', 'تأكيد: فتح للتعديل'],
   locked_msg: ['Done & locked — tap ✓ on the part to unlock', 'مُنجز ومقفل — اضغط ✓ عند المقطع لفتحه'],
-  tr_choose: ['Choose a transcript', 'اختر التفريغ'], tr_showing: ['Showing', 'المعروض'],
+  tr_choose: ['Choose a transcript', 'اختر التفريغ'], tr_showing: ['Showing', 'المعروض'], tr_search_ph: ['Search in the transcript…', 'ابحث في التفريغ…'], tr_hits: ['{0} matches · tap one to jump there', '{0} نتيجة · اضغط أيّها لينتقل التشغيل إليها'], tr_nohit: ['No match', 'لا نتيجة'],
   pin: ['Pin', 'تثبيت'], pinned: ['Pinned', 'مثبّت'], working_on: ['Working on now', 'قيد العمل الآن'],
   continue: ['Continue listening', 'أكمل الاستماع'],
   more_opts: ['More', 'المزيد'], my_works: ['My works', 'أعمالي'], my_works_s: ['Cuts & transcripts', 'المقاطع والتفريغات'],
@@ -283,9 +283,8 @@ function applyLook() {
 }
 /* the whole page bigger or smaller, chosen per device: phones as designed, wide computer screens larger */
 function fitZoom() {
-  const z = store.get('zoom', 'auto'), w = window.innerWidth;
-  const auto = w >= 1800 ? 1.35 : w >= 1400 ? 1.22 : w >= 1100 ? 1.12 : 1;
-  const v = z === 'auto' ? auto : +z || 1;
+  const z = store.get('zoom', 'auto');
+  const v = z === 'auto' ? 1 : +z || 1;
   document.body.style.zoom = v === 1 ? '' : v;
 }
 window.addEventListener('resize', () => fitZoom());
@@ -307,7 +306,7 @@ async function route() {
   clearTimeout(route.t); route.t = setTimeout(() => v.classList.remove('enter'), 900);
   await hit[1](h.match(hit[0]));
   $('#backBtn').hidden = !/^#\/(lib\/f|item|project\/|help|works|tasks|settings)/.test(h);
-  renderTabs(); PL.place();
+  renderTabs(); PL.place(); placeReminder();
 }
 window.addEventListener('hashchange', () => { route().then(() => window.scrollTo(0, 0)); });
 window.addEventListener('scroll', () => $('.top').classList.toggle('scrolled', window.scrollY > 4), { passive: true });
@@ -318,6 +317,7 @@ function renderTabs() {
     : /^#\/tasks/.test(h) ? 'tasks' : /^#\/(settings|help)/.test(h) ? 'settings' : '';
   const active = S.jobs.filter(j => j.status === 'running' || j.status === 'queued').length;
   const tab = ([k, i, n, x]) => `<a href="#/${k}" class="${on === k ? 'on' : ''}${x ? ' x' : ''}"><i>${ICON(i)}</i><span>${t(n)}</span>${k === 'tasks' && active ? `<span class="badge">${active}</span>` : ''}</a>`;
+  const mb = $('#menuBtn'); if (mb && !mb.innerHTML) { mb.innerHTML = ICON('list'); mb.setAttribute('aria-label', t('menu')); }
   const tb = $('#tasksBtn');
   if (tb) { tb.innerHTML = `${ICON('clock')}${active ? `<span class="badge">${active}</span>` : ''}`; tb.classList.toggle('busy', !!active); tb.setAttribute('aria-label', t('tasks')); }
   const sig = on + '|' + active + '|' + LANG;
@@ -596,6 +596,12 @@ function folderCard(id, name, icon, color, n) {
   return `<a class="fcard" href="#/lib/f/${id}" style="--fc:${esc(color || 'var(--acc)')}"><div class="fi">${esc(icon)}</div><b dir="auto">${esc(name)}</b><small>${t('items_n', n)}</small></a>`;
 }
 const fabHTML = () => `<button class="fab" data-act="add"><b>＋</b> ${t('add')}</button>`;
+function placeReminder() {
+  const box = $('#rmd'); if (!box) return;
+  const h = reminderHTML();
+  if (box.dataset.i !== String(store.get('rmi', -1)) || !box.innerHTML || !h) { box.dataset.i = String(store.get('rmi', -1)); box.innerHTML = h; }
+  box.hidden = !h;
+}
 function reminderHTML() {
   const R = window.REMINDERS || []; if (!R.length || S.set.reminders === false) return '';
   let i = store.get('rmi', Math.floor(Math.random() * R.length));
@@ -674,7 +680,6 @@ async function vHome() {
     <aside class="hside">
       <div class="sectitle">${ICON('folders')} ${t('your_folders')}<a class="more" href="#/lib">${t('library')}</a></div>
       <div class="folders">${folderCard('all', t('all_items'), '🗂️', '#4A5A66', n('all'))}${S.folders.slice(0, 7).map(f => folderCard(f.id, f.name, f.icon || '📁', f.color, n(f.id))).join('')}</div>
-      ${reminderHTML()}
     </aside></div>${fabHTML()}`;
   renderHomeJobs();
   $('#hs').onsubmit = e => { e.preventDefault(); S.q = $('#hq').value.trim(); location.hash = '#/search'; };
@@ -757,7 +762,7 @@ async function qMenu(el, itemId, fmtk, pick) {
   el.classList.add('qopen');
   const box = document.createElement('div'); box.className = 'qmenu';
   box.innerHTML = `<div class="qh">${t('quality')}</div><div class="qwait"><span class="spin"></span> ${t('q_reading')}</div>`;
-  document.body.appendChild(box); placeQ(box, el);
+  (document.querySelector('dialog[open]') || document.body).appendChild(box); placeQ(box, el);
   S.qc = S.qc || {};
   let q = S.qc[itemId];
   if (!q) { q = await api(`/api/items/${itemId}/qualities?probe=1`).catch(() => null); if (q) S.qc[itemId] = q; }
@@ -986,7 +991,7 @@ function marksHTML() {
       ${S.lockAsk === b.id ? `<div class="btns lockrow"><button class="btn ${b.done ? '' : 'pri'} lockok" data-act="mark-done-ok">${b.done ? '🔓 ' + t('unlock_ok') : '✓ ' + t('lock_ok')}</button><button class="btn ghost" data-act="mark-done-no">✕</button></div>` : ''}
       ${b.end == null && !b.done ? `<button class="btn soft wide" data-act="set-end">🔴 ${t('set_end')}</button>` : ''}
       <div class="mbar"><button class="btn icon" data-act="seek" data-t="${b.start}" aria-label="${t('play')}">▶</button>
-        ${clipBtns(d.jobs, j => j.bookmark_id === b.id, '', vid, 'mp3')}
+        ${clipBtns(d.jobs, j => j.bookmark_id === b.id, '', vid)}
         ${tj && tj.status === 'done' ? `<button class="btn ok" data-act="tr-pick-b" data-b="${b.id}">📝 ✓</button>`
           : tj && ['running', 'queued'].includes(tj.status) ? `<button class="btn busy" disabled>📝 <bdi>${Math.round((tj.progress || 0) * 100)}%</bdi></button>`
           : `<button class="btn" data-act="one" data-a="transcribe">📝 ${t('transcribe')}</button>`}
@@ -1111,6 +1116,7 @@ async function loadTranscript() {
            <label class="chip big"><input type="checkbox" data-act="follow" ${S.set.follow !== false ? 'checked' : ''}> ${t('follow')}</label>
            ${one ? `<button class="btn ghost" data-act="tr-rename" data-id="${one.id}">🏷️</button><button class="btn ghost danger" data-act="tr-del" data-id="${one.id}">🗑</button>` : ''}`}
     </div>
+    ${S.editTr ? '' : `<div class="trq"><input class="input" id="trq" dir="auto" placeholder="${t('tr_search_ph')}" value="${esc(S.tr.q || '')}" autocomplete="off"><span class="muted small" id="trqN"></span></div>`}
     <div class="trbox ${pick ? 'picking' : ''}" id="trbox">${segs.map((s, i) => {
       let h = '';
       while (hi < heads.length && heads[hi].start <= s.start + 0.5) { h += `<div class="trhead" data-act="seek" data-t="${heads[hi].start}">📌 ${esc(heads[hi].title)}</div>`; hi++; }
@@ -1119,6 +1125,26 @@ async function loadTranscript() {
         ? `<div class="seg" data-i="${i}"><span class="tm"><bdi>${fmt(s.start)}</bdi></span><textarea dir="auto">${esc(s.text)}</textarea></div>`
         : `<div class="seg ${inPick ? 'picked' : ''}" data-i="${i}" data-act="seg" data-t="${s.start}"><span class="tm"><bdi>${fmt(s.start)}</bdi></span><p dir="auto">${esc(s.text)}</p></div>`);
     }).join('')}</div>`;
+  const q = $('#trq');
+  if (q) { q.oninput = () => { S.tr.q = q.value; clearTimeout(q.t); q.t = setTimeout(trSearch, 150); }; if (S.tr.q) trSearch(); }
+}
+/* the search box above the transcript: shows only the sentences with the word, the word marked; tap one to jump */
+const trNorm = s => String(s || '').replace(/[\u064B-\u0652\u0670\u0640]/g, '').replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').toLowerCase();
+function trSearch() {
+  const box = $('#trbox'), n = $('#trqN'); if (!box) return;
+  const words = trNorm(S.tr.q).split(/\s+/).filter(Boolean);
+  let hits = 0;
+  $$('.seg', box).forEach(el => {
+    const s = S.tr.segs[+el.dataset.i], p = $('p', el); if (!s || !p) return;
+    if (!words.length) { el.hidden = false; p.innerHTML = esc(s.text); return; }
+    const ok = words.every(w => trNorm(s.text).includes(w));
+    el.hidden = !ok; if (!ok) return;
+    hits++;
+    // mark the words in the shown text (the text is compared without diacritics, so match on the plain words)
+    p.innerHTML = esc(s.text).split(/(\s+)/).map(tok => words.some(w => trNorm(tok).includes(w)) ? `<mark class="hl">${tok}</mark>` : tok).join('');
+  });
+  $$('.trhead', box).forEach(h => h.hidden = !!words.length);
+  if (n) n.textContent = words.length ? (hits ? t('tr_hits', hits) : t('tr_nohit')) : '';
 }
 let lastUserScroll = 0;
 document.addEventListener('scroll', e => { if (e.target && e.target.id === 'trbox') lastUserScroll = Date.now(); }, true);
@@ -1531,7 +1557,6 @@ async function clipSheet(path) {
 async function vTasks(tab) {
   S.ttab = tab === 'done' ? 'done' : 'now';
   view().innerHTML = `<div class="h"><h2>⏳ ${t('tasks')}</h2><div class="grow"></div><button class="ib more" data-act="tasks-menu" aria-label="${t('more_opts')}">${ICON('dots')}</button></div>
-    ${reminderHTML()}
     <div class="ftabs" id="ttabs"></div><div id="jobs"></div>`;
   await pollJobs(); renderJobs();
 }
@@ -1709,11 +1734,13 @@ async function playAt(itemId, at) {
 const ACT = {
   back: () => history.length > 1 ? history.back() : (location.hash = '#/home'),
   add: () => addSheet(),
+  'side-toggle': () => document.documentElement.classList.toggle('side'),
+  'side-close': () => document.documentElement.classList.remove('side'),
   'lan-new': async () => { lanShow(await post('/api/lan', { on: true, new_code: true })); toast(t('saved')); },
   'import-old': async () => { await post('/api/import-old'); oldBox(); },
   wfold: el => { S.wfold = el.dataset.k; vFolder('all', 'works', true); },
   'rmd-next': el => { const R = window.REMINDERS || []; const i = (store.get('rmi', 0) + 1) % R.length; store.set('rmi', i); store.set('rmt', Date.now());
-    el.classList.add('out'); setTimeout(() => { const n = document.createElement('div'); n.innerHTML = reminderHTML(); el.replaceWith(n.firstElementChild); }, 180); },
+    const n = document.createElement('div'); n.innerHTML = reminderHTML(); el.replaceWith(n.firstElementChild); const box = $('#rmd'); if (box) box.dataset.i = String(i); },
   'theme-toggle': () => saveSet({ theme: document.documentElement.classList.contains('isdark') ? 'light' : 'dark' }),
   'new-folder': async () => { const id = await customizeFolder(null); if (id) location.hash = '#/lib/f/' + id; },
   'custom-folder': async el => { await loadLib(); const f = S.folders.find(x => x.id === +el.dataset.id); if (await customizeFolder(f)) route(); },
@@ -1954,6 +1981,8 @@ document.addEventListener('click', e => {
   if (el.tagName === 'BUTTON' || el.tagName === 'A') e.preventDefault();
   ACT[el.dataset.act](el, e);
 });
+document.addEventListener('click', e => { if (e.target.closest('#tabbar a, #tabbar .tadd')) document.documentElement.classList.remove('side'); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') document.documentElement.classList.remove('side'); });
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-set] button'); if (b) { const k = b.closest('[data-set]').dataset.set; let v = b.dataset.v; if (/^[\d.]+$/.test(v)) v = +v;
     $$('button', b.parentElement).forEach(x => x.classList.toggle('on', x === b)); saveSet({ [k]: v }).then(() => { if (k === 'lang' || k === 'font_read') vSettings(); }); }

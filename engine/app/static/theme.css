@@ -383,10 +383,20 @@ img.logo{object-fit:cover;padding:0;background:none;box-shadow:0 6px 16px -8px r
 .hjob.running .bar i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);transform:translateX(-100%);animation:shine 1.6s infinite}
 .hjob small{font-size:.78rem}
 .hside .folders{margin-bottom:6px}
-/* computers: a side menu instead of the top tabs; the content and the player sit beside it */
+/* computers: the tabs become a side menu that stays hidden until the ☰ button; the page uses the whole width */
+#menuBtn,#sideBack{display:none}
+.trq{display:flex;align-items:center;gap:10px;margin:8px 0 6px}
+.trq input{flex:1;min-width:0;min-height:40px;border-radius:12px;padding:0 12px}
+.trq span{white-space:nowrap}
+mark.hl{background:color-mix(in srgb,var(--gold-hi) 45%,transparent);color:inherit;border-radius:4px;padding:0 2px}
 @media (min-width:1000px){
-  :root{--side:238px}
-  .tabbar{position:fixed;top:0;bottom:0;inset-inline-start:0;inset-inline-end:auto;width:var(--side);height:auto;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:3px;padding:16px 14px;padding-top:calc(16px + env(safe-area-inset-top));border:0;border-inline-end:1px solid var(--line);border-radius:0;background:var(--card);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;z-index:31;overflow-y:auto}
+  :root{--side:250px}
+  #menuBtn{display:grid}
+  #sideBack{display:block;position:fixed;inset:0;z-index:30;background:rgba(8,14,12,.28);opacity:0;pointer-events:none;transition:opacity .25s}
+  html.side #sideBack{opacity:1;pointer-events:auto}
+  .tabbar{position:fixed;top:0;bottom:0;inset-inline-start:0;inset-inline-end:auto;width:var(--side);height:auto;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:3px;padding:16px 14px;padding-top:calc(16px + env(safe-area-inset-top));border:0;border-inline-end:1px solid var(--line);border-radius:0;background:var(--card);box-shadow:0 20px 50px -20px rgba(0,0,0,.5);-webkit-backdrop-filter:none;backdrop-filter:none;z-index:31;overflow-y:auto;transition:transform .28s var(--ease),visibility .28s;visibility:hidden}
+  [dir=rtl] .tabbar{transform:translateX(105%)}[dir=ltr] .tabbar{transform:translateX(-105%)}
+  html.side .tabbar{transform:none;visibility:visible}
   .tabbar a{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;height:46px;padding:0 12px;border-radius:14px;font-size:.98rem;font-weight:500;color:var(--muted)}
   .tabbar a i{padding:0;background:none!important;animation:none!important;display:inline-flex}
   .tabbar a i .ic{width:22px;height:22px}
@@ -400,12 +410,27 @@ img.logo{object-fit:cover;padding:0;background:none;box-shadow:0 6px 16px -8px r
   .tabbar .tadd:active{transform:scale(.97)}
   .tabbar a .badge{position:static;margin-inline-start:auto}
   .tabbar::after{content:"بسم الله";margin-top:auto;padding:16px 10px 4px;font-family:Amiri,"Traditional Arabic",serif;font-size:1.05rem;color:var(--gold);text-align:center}
-  .top{margin-inline-start:var(--side)}
-  #setBtn,#tasksBtn{display:none}
-  .view{max-width:calc(var(--side) + 1180px);padding-inline-start:calc(var(--side) + 32px);padding-inline-end:32px}
-  .dock,.mini{inset-inline-start:var(--side)}
-  [dir=rtl] .toast{right:calc(var(--side) + 16px)}[dir=ltr] .toast{left:calc(var(--side) + 16px)}
+  .view{max-width:none;padding:18px 28px 40px}
+  .dock,.mini{inset-inline:0}
   .home{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr);gap:26px;align-items:start}
   .hside{position:sticky;top:78px}
   .hmain .sectitle:first-of-type{margin-top:22px}
 }
+
+/* ---------- the verse / hadith: one small strip on every page. On computers it sits in the free space at the side ---------- */
+#rmd{max-width:1180px;margin:0 auto;padding:0 14px}
+#rmd .rmd{margin:8px 0 0;padding:6px 12px}
+#rmd .rmd .rt{font-size:.88rem;line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#rmd .rmd small{font-size:.62rem}
+@media (min-width:1000px){
+  #rmd{position:fixed;inset-inline-end:18px;bottom:calc(var(--dock) + 22px);width:270px;max-width:none;margin:0;padding:0;z-index:5}
+  #rmd .rmd{margin:0;text-align:start;align-items:flex-start;background:color-mix(in srgb,var(--gold-hi) 7%,var(--card));box-shadow:var(--shadow)}
+  #rmd .rmd .rt{-webkit-line-clamp:4}
+  .view{padding-inline-end:310px}
+  .home{grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+}
+/* ---------- no animation at all (the owner: it slows the computer down), and no blurred glass ---------- */
+*,*::before,*::after{animation:none!important;transition:none!important}
+.top,.tabbar,.pcard{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.top{background:var(--bg)}.tabbar{background:var(--card)}.pcard{background:var(--card)}
+.view.enter,.view.enter *{animation:none!important;opacity:1}
