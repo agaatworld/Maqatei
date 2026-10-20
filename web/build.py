@@ -1,7 +1,7 @@
 """Builds the iPhone version (a web app) into site/: the normal Maqati screens and engine, plus Pyodide (Python in
-the browser) and ffmpeg.wasm. It is kept in app/ on the main branch, which GitHub Pages publishes: https://beaconcrest8.github.io/maqati/app/
+the browser) and ffmpeg.wasm. It is kept in open/ on the main branch, which GitHub Pages publishes: https://beaconcrest8.github.io/maqati/open/
 
-    python3 web/build.py [out_dir]     (default: app/)
+    python3 web/build.py [out_dir]     (default: open/)
 
 Downloaded packages are kept in web/.cache (or $WEB_CACHE)."""
 import hashlib
@@ -19,7 +19,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 APP = ROOT / "engine" / "app"
-OUT = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "app").resolve()
+OUT = Path(sys.argv[1] if len(sys.argv) > 1 else ROOT / "open").resolve()
 CACHE = Path(os.environ.get("WEB_CACHE") or HERE / ".cache")
 
 PYODIDE = "0.27.7"
@@ -68,6 +68,8 @@ def main():
             h.update(p.relative_to(ROOT).as_posix().encode() + p.read_bytes())
     stamp = VERSION + "-" + h.hexdigest()[:8]
     if OUT.exists():
+        if any(OUT.iterdir()) and not (OUT / "boot.js").exists():
+            sys.exit(f"{OUT} is not a web build folder: not touching it")
         shutil.rmtree(OUT)
     OUT.mkdir(parents=True)
 
