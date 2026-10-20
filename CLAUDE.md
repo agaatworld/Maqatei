@@ -15,6 +15,15 @@ The full product brief is in `docs/REBUILD-BRIEF.md`. Read sections 4 (features 
   Bump it + add a `## x.y.z` section to `CHANGELOG-ar.md` to publish a release (CI does it).
 - Signing key in `signing/` must never change.
 
+## Web version (iPhone and computer)
+- https://beaconcrest8.github.io/maqati/open/ — the same engine in the browser: Pyodide runs `engine/app` (via
+  `engine/app/webapi.py`), ffmpeg.wasm does media work, Groq is called from the page. Files live in IndexedDB.
+- Sources: `web/` (boot.js, sw.js, boot.html, build.py). `python3 web/build.py` writes `open/` (committed; GitHub
+  Pages publishes main). The web workflow rebuilds `open/` if it is stale. **`app/` is the Android project — never
+  write build output there.**
+- No YouTube links on the web version (browsers can't). `tests/web/live.js` + `web-check.yml` (run it by hand:
+  workflow_dispatch) use the live site and put screenshots in the `web-check` pre-release.
+
 ## Before every push
 - `PYTHONPATH=engine/vendor python3 tests/test_transcribe_pipeline.py`
 - `node --check engine/app/static/app.js`
