@@ -859,8 +859,8 @@ function renderBanner() {
       : `<div class="banner"><div class="grow minw"><b>⬇ ${act.kind === 'info' ? t('reading_link') : t('dl_banner', what)} <bdi>${pct}%</bdi></b><small>${t('dl_banner_p')}</small>
           <div class="bar"><i style="width:${pct}%"></i></div>${act.eta ? `<small class="eta">⏱ ${leftTxt(act)}</small>` : ''}</div></div>`;
   }
-  if (tr) { const pct = Math.round((tr.progress || 0) * 100); h += `<div class="banner"><div class="grow minw"><b>📝 ${t('busy_tr')} <bdi>${pct}%</bdi></b><small dir="auto">${esc(tr.message || '')}</small><div class="bar"><i style="width:${pct}%"></i></div>${tr.eta ? `<small class="eta">⏱ ${leftTxt(tr)}</small>` : ''}</div></div>`; }
-  b.innerHTML = h;
+  if (tr && false) { const pct = Math.round((tr.progress || 0) * 100); h += `<div class="banner"><div class="grow minw"><b>📝 ${t('busy_tr')} <bdi>${pct}%</bdi></b><small dir="auto">${esc(tr.message || '')}</small><div class="bar"><i style="width:${pct}%"></i></div>${tr.eta ? `<small class="eta">⏱ ${leftTxt(tr)}</small>` : ''}</div></div>`; }
+  if (b.innerHTML !== h) b.innerHTML = h;
 }
 async function refreshItem(opts = {}) {
   if (!S.item) return;
@@ -882,13 +882,21 @@ function showTab(k) {
   $$('#itabs button').forEach(b => b.classList.toggle('on', b.dataset.k === k));
   $$('#secs .sec').forEach(x => x.classList.toggle('show', TAB_OF[x.dataset.sec] === k));
 }
-function openFiles() { showTab('files'); }
+function openFiles() { }   // a new task no longer switches tabs: the person stays where they are
 function renderSections(opts = {}) {
   const d = S.item, host = $('#secs'); if (!host) return;
   const active = document.activeElement;
   if (opts.soft && active && host.contains(active) && /INPUT|TEXTAREA/.test(active.tagName)) return;   // don't disturb typing
   const trOld = opts.keepTr && $('#sb-tr') ? $('#sb-tr').innerHTML : null;
   const y = window.scrollY;
+  if (opts.soft && $('#itabs')) {                   // live update: same page, only what changed inside each tab
+    const parts = { marks: marksHTML(), ex: exListHTML(), notes: notesHTML(), files: filesHTML() };
+    for (const [k, html] of Object.entries(parts)) { const el = $('#sb-' + k); if (el && el.innerHTML !== html) el.innerHTML = html; }
+    const cnt2 = { marks: d.bookmarks.length, tr: d.transcripts.length, notes: d.notes.length + d.excerpts.length, files: d.files.length };
+    $$('#itabs button').forEach(b => { const n = cnt2[b.dataset.k], sm = $('small', b); if (sm) sm.textContent = n || ''; else if (n) b.insertAdjacentHTML('beforeend', `<small>${n}</small>`); });
+    if (!opts.keepTr && S.set.show_transcript !== false) loadTranscript();
+    return;
+  }
   const tab = store.get('itab', 'marks'), cnt = { marks: d.bookmarks.length, tr: d.transcripts.length, notes: d.notes.length + d.excerpts.length, files: d.files.length };
   host.innerHTML = `<div class="itabs" id="itabs" role="tablist">${[['marks', 'sec_marks_s'], ...(S.set.show_transcript !== false ? [['tr', 'sec_tr_s']] : []), ['notes', 'sec_notes_s'], ['files', 'sec_files_s']].map(([k, l]) =>
     `<button role="tab" data-act="itab" data-k="${k}" class="${tab === k ? 'on' : ''}">${t(l)}${cnt[k] ? `<small>${cnt[k]}</small>` : ''}</button>`).join('')}</div>` + [
@@ -1176,14 +1184,14 @@ function fileRow(o) {
 function toolsHTML() {
   const d = S.item, online = !!d.url;
   return `<div class="btns grid2">
-    ${online && d.media === 'video' ? `<span class="split big"><button class="btn big ${d.file ? '' : 'pri'}" data-act="item-action" data-a="fetch_video">⬇ ${t('dl_video')}</button>${qdd('video', `data-item="${d.id}"`, 'fetch')}</span>` : ''}
-    ${online ? `<button class="btn big" data-act="item-action" data-a="fetch_audio">⬇ ${t('dl_audio')}</button>` : ''}
-    ${d.file && d.media === 'video' ? `<button class="btn big" data-act="item-action" data-a="convert">🎵 ${t('to_mp3')}</button>` : ''}
-    <button class="btn big" data-act="item-action" data-a="transcribe">📝 ${t('tr_full')}</button>
-    <button class="btn big gold" data-act="export" data-which="full">📕 ${t('export_book')}</button>
-    <button class="btn big" data-act="rename-item">✏️ ${t('rename')}</button>
-    <button class="btn big" data-act="move-item">📁 ${t('move')}</button>
-    <button class="btn big danger" data-act="del-item">🗑 ${t('del_item')}</button></div>`;
+    ${online && d.media === 'video' ? `<span class="split big"><button class="btn big ${d.file ? '' : 'pri'}" data-act="item-action" data-a="fetch_video" value="x">⬇ ${t('dl_video')}</button>${qdd('video', `data-item="${d.id}"`, 'fetch')}</span>` : ''}
+    ${online ? `<button class="btn big" data-act="item-action" data-a="fetch_audio" value="x">⬇ ${t('dl_audio')}</button>` : ''}
+    ${d.file && d.media === 'video' ? `<button class="btn big" data-act="item-action" data-a="convert" value="x">🎵 ${t('to_mp3')}</button>` : ''}
+    <button class="btn big" data-act="item-action" data-a="transcribe" value="x">📝 ${t('tr_full')}</button>
+    <button class="btn big gold" data-act="export" data-which="full" value="x">📕 ${t('export_book')}</button>
+    <button class="btn big" data-act="rename-item" value="x">✏️ ${t('rename')}</button>
+    <button class="btn big" data-act="move-item" value="x">📁 ${t('move')}</button>
+    <button class="btn big danger" data-act="del-item" value="x">🗑 ${t('del_item')}</button></div>`;
 }
 
 /* ---------- export: PDF book / TXT / Word, with or without times ---------- */

@@ -23,11 +23,11 @@ import kotlin.concurrent.thread
  */
 object Updater {
     private val ui = Handler(Looper.getMainLooper())
-    private const val DAY = 24 * 3600_000L
+    private const val EVERY = 3 * 3600_000L      // look for a new version at most every 3 hours, when the app opens
 
     fun checkOnLaunch(a: Activity) {
         val prefs = a.getSharedPreferences("maqati", Activity.MODE_PRIVATE)
-        if (System.currentTimeMillis() - prefs.getLong("update_checked", 0) < DAY) return
+        if (System.currentTimeMillis() - prefs.getLong("update_checked", 0) < EVERY) return
         prefs.edit().putLong("update_checked", System.currentTimeMillis()).apply()
         check(a, quiet = true)
     }
