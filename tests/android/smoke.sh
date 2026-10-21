@@ -49,6 +49,60 @@ for i in $(seq 1 120); do
 done
 python3 -c "import json;j=[x for x in json.load(open('$OUT/jobs.json')) if x['kind']=='info'][0];assert j['status']=='done',j;print('yt-dlp link OK')"
 
+# a video link with separate picture and sound (like YouTube): yt-dlp must join them with the phone's ffmpeg,
+# then a video part is cut from it, and another straight from the site (no download)
+DASH=https://storage.googleapis.com/shaka-demo-assets/angel-one/dash.mpd
+VID=$(curl -sf -X POST -H 'Content-Type: application/json' -d "{\"text\":\"$DASH\",\"mode\":\"video\",\"q\":360}" http://127.0.0.1:8775/api/links | python3 -c "import json,sys;print(json.load(sys.stdin)['ids'][0])")
+for i in $(seq 1 300); do
+  curl -sf http://127.0.0.1:8775/api/jobs -o $OUT/jobs-video.json
+  if python3 -c "import json,sys;j=[x for x in json.load(open('$OUT/jobs-video.json')) if x['item_id']==$VID];sys.exit(0 if j and all(x['status'] in ('done','error') for x in j) and (any(x['kind']=='fetch' for x in j) or any(x['status']=='error' for x in j)) else 1)"; then break; fi
+  sleep 1
+done
+python3 -c "
+import json
+j=[x for x in json.load(open('$OUT/jobs-video.json')) if x['item_id']==$VID]
+for x in j: print('  ', x['kind'], x['status'], (x.get('result') or x.get('message') or '')[:300])
+f=[x for x in j if x['kind']=='fetch']
+assert f and f[0]['status']=='done', 'VIDEO DOWNLOAD FAILED'
+print('video download (picture + sound joined) OK')"
+curl -sf http://127.0.0.1:8775/api/items/$VID -o $OUT/item-video.json
+python3 -c "import json;i=json.load(open('$OUT/item-video.json'));assert i['media']=='video' and i['file'],i;print('video item OK',i['file'],i['duration'])"
+BV=$(curl -sf -X POST -H 'Content-Type: application/json' -d '{"name":"v","start":5,"end":15}' http://127.0.0.1:8775/api/items/$VID/bookmarks | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")
+curl -sf -X POST -H 'Content-Type: application/json' -d "{\"ids\":[$BV],\"action\":\"video\",\"q\":240}" http://127.0.0.1:8775/api/bookmarks/action > /dev/null
+curl -sf -X POST -H 'Content-Type: application/json' -d "{\"ids\":[$BV],\"action\":\"video\"}" http://127.0.0.1:8775/api/bookmarks/action > /dev/null
+for i in $(seq 1 240); do
+  curl -sf http://127.0.0.1:8775/api/jobs -o $OUT/jobs-clip.json
+  if python3 -c "import json,sys;j=[x for x in json.load(open('$OUT/jobs-clip.json')) if x['kind']=='clip' and x['bookmark_id']==$BV];sys.exit(0 if len(j)==2 and all(x['status'] in ('done','error') for x in j) else 1)"; then break; fi
+  sleep 1
+done
+python3 -c "
+import json
+j=[x for x in json.load(open('$OUT/jobs-clip.json')) if x['kind']=='clip' and x['bookmark_id']==$BV]
+for x in j: print('  ', x['title'], x['status'], (x.get('result') or x.get('message') or '')[:300])
+assert len(j)==2 and all(x['status']=='done' for x in j), 'VIDEO PART FAILED'
+print('video parts (original and 240p) OK')"
+# a link kept as a link: the part is read straight from the site
+LID=$(curl -sf -X POST -H 'Content-Type: application/json' -d "{\"text\":\"$DASH\",\"mode\":\"none\"}" http://127.0.0.1:8775/api/links | python3 -c "import json,sys;print(json.load(sys.stdin)['ids'][0])")
+for i in $(seq 1 120); do
+  curl -sf http://127.0.0.1:8775/api/items/$LID -o $OUT/item-link.json
+  if python3 -c "import json,sys;i=json.load(open('$OUT/item-link.json'));sys.exit(0 if i['duration'] else 1)"; then break; fi
+  sleep 1
+done
+BL=$(curl -sf -X POST -H 'Content-Type: application/json' -d '{"name":"l","start":3,"end":9}' http://127.0.0.1:8775/api/items/$LID/bookmarks | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")
+curl -sf -X POST -H 'Content-Type: application/json' -d "{\"ids\":[$BL],\"action\":\"video\",\"q\":360}" http://127.0.0.1:8775/api/bookmarks/action > /dev/null
+for i in $(seq 1 240); do
+  curl -sf http://127.0.0.1:8775/api/jobs -o $OUT/jobs-link.json
+  if python3 -c "import json,sys;j=[x for x in json.load(open('$OUT/jobs-link.json')) if x['kind']=='clip' and x['bookmark_id']==$BL];sys.exit(0 if j and j[0]['status'] in ('done','error') else 1)"; then break; fi
+  sleep 1
+done
+python3 -c "
+import json
+j=[x for x in json.load(open('$OUT/jobs-link.json')) if x['kind']=='clip' and x['bookmark_id']==$BL]
+print('  ', j[0]['status'], (j[0].get('result') or j[0].get('message') or '')[:300])
+assert j[0]['status']=='done', 'VIDEO PART FROM LINK FAILED'
+print('video part straight from a link OK')"
+log
+
 # the page itself shows (screenshot kept as an artifact)
 sleep 3
 adb exec-out screencap -p > $OUT/app.png

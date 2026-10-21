@@ -529,6 +529,10 @@ def _ytdlp(url, out_template, want, height, cancel=None, progress=None, section=
         s, e = section
         cmd += ["--download-sections", f"*{s:.3f}-{e:.3f}" if e else f"*{s:.3f}-inf"]
     final = []
+    # a video usually comes as two downloads (picture, then sound) and a join: one bar from 0 to 100% for all of it.
+    # (--print keeps yt-dlp quiet, so a new download is recognised by its new total size)
+    share = (0.82, 0.13) if want != "audio" else (0.97,)
+    st = {"tot": None, "part": -1, "best": 0.0}
 
     def on_line(line):
         if line.startswith("PROG "):
@@ -536,8 +540,16 @@ def _ytdlp(url, out_template, want, height, cancel=None, progress=None, section=
             try:
                 done = float(parts[0])
                 tot = next((float(x) for x in parts[1:] if x not in ("NA", "None")), 0)
-                if progress and tot:
-                    progress(min(1.0, done / tot))
+                if not tot:
+                    return
+                if st["tot"] is None or abs(tot - st["tot"]) > max(1.0, 0.2 * st["tot"]) and done < 0.5 * tot:
+                    st["part"] = min(st["part"] + 1, len(share) - 1)
+                st["tot"] = tot
+                i = max(0, st["part"])
+                x = min(0.97, sum(share[:i]) + share[i] * min(1.0, done / tot))
+                if progress and x > st["best"]:
+                    st["best"] = x
+                    progress(x)
             except (ValueError, IndexError):
                 pass
         elif not line.startswith("[") and Path(line).suffix and Path(line).exists():
