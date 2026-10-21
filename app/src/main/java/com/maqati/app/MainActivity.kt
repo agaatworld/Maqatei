@@ -3,8 +3,8 @@ package com.maqati.app
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
-import android.app.DownloadManager
 import android.content.ActivityNotFoundException
+import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -18,6 +18,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.print.PrintAttributes
 import android.print.PrintManager
+import android.provider.MediaStore
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -295,19 +296,55 @@ class MainActivity : AppCompatActivity() {
         web.setDownloadListener { url, _, disposition, mime, _ -> saveToDownloads(url, disposition, mime) }
     }
 
-    /** "Download" in Maqati: put a copy in the phone's Download/Maqati folder. */
+    /** "Download" in Maqati: put a copy in the phone's Download/Maqati folder, straight away.
+     *  (The system download service queues files and can wait a long time; the file is already on the phone.) */
     private fun saveToDownloads(url: String, disposition: String?, mime: String?) {
-        val name = fileName(disposition) ?: Uri.parse(url).lastPathSegment ?: "maqati"
-        try {
-            val req = DownloadManager.Request(Uri.parse(url))
-                .setTitle(name)
-                .setMimeType(mime)
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "Maqati/$name")
-            (getSystemService(DOWNLOAD_SERVICE) as DownloadManager).enqueue(req)
-            Toast.makeText(this, "يُحفظ في التنزيلات ← Maqati", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(this, "تعذّر الحفظ: ${e.message}", Toast.LENGTH_LONG).show()
+        val name0 = fileName(disposition) ?: Uri.parse(url).lastPathSegment ?: "maqati"
+        Toast.makeText(this, "جارٍ الحفظ…", Toast.LENGTH_SHORT).show()
+        Thread {
+            try {
+                val conn = (java.net.URL(url).openConnection() as java.net.HttpURLConnection).apply {
+                    connectTimeout = 15000
+                    readTimeout = 600000
+                }
+                if (conn.responseCode !in 200..299) throw java.io.IOException("HTTP ${conn.responseCode}")
+                val name = fileName(conn.getHeaderField("Content-Disposition")) ?: name0
+                val type = mime?.takeIf { it.isNotBlank() && it != "application/octet-stream" } ?: conn.contentType ?: "application/octet-stream"
+                conn.inputStream.use { input -> writeDownload(name, type) { out -> input.copyTo(out, 1 shl 16) } }
+                runOnUiThread { Toast.makeText(this, "✓ حُفظ في التنزيلات ← Maqati\n$name", Toast.LENGTH_LONG).show() }
+            } catch (e: Exception) {
+                runOnUiThread { Toast.makeText(this, "تعذّر الحفظ: ${e.message}", Toast.LENGTH_LONG).show() }
+            }
+        }.start()
+    }
+
+    /** Write a new file into Download/Maqati (MediaStore on Android 10+, the folder itself before that). */
+    private fun writeDownload(name: String, mime: String, write: (java.io.OutputStream) -> Unit) {
+        if (Build.VERSION.SDK_INT >= 29) {
+            val v = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                put(MediaStore.MediaColumns.MIME_TYPE, mime)
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Maqati")
+                put(MediaStore.MediaColumns.IS_PENDING, 1)
+            }
+            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, v) ?: throw java.io.IOException("no space")
+            try {
+                (contentResolver.openOutputStream(uri) ?: throw java.io.IOException("cannot write")).use(write)
+            } catch (e: Exception) {
+                contentResolver.delete(uri, null, null)
+                throw e
+            }
+            v.clear()
+            v.put(MediaStore.MediaColumns.IS_PENDING, 0)
+            contentResolver.update(uri, v, null, null)
+        } else {
+            @Suppress("DEPRECATION")
+            val dir = java.io.File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Maqati")
+            dir.mkdirs()
+            var f = java.io.File(dir, name)
+            var n = 2
+            while (f.exists()) { f = java.io.File(dir, name.substringBeforeLast('.') + " ($n)" + (if ('.' in name) "." + name.substringAfterLast('.') else "")); n++ }
+            java.io.FileOutputStream(f).use(write)
         }
     }
 

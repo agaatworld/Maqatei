@@ -460,9 +460,22 @@ def link_heights(url, timeout=25):
         return None
 
 
+_infos = {}                     # link -> (time, yt-dlp's full answer with every format): asked once, reused
+
+
+def link_json(url):
+    """yt-dlp's full answer for a link, cached for 2 hours (its stream addresses stay valid for about 6)."""
+    hit = _infos.get(url)
+    if hit and time.time() - hit[0] < 2 * 3600:
+        return hit[1]
+    j = _json(url, ["--skip-download"])
+    _infos[url] = (time.time(), j)
+    return j
+
+
 def link_info(url):
     try:
-        j = _json(url, ["--skip-download"])
+        j = link_json(url)
     except RuntimeError as e:
         if not (is_youtube(url) and is_block(str(e))):
             raise
@@ -644,6 +657,32 @@ def speech_selector():
     return "ba[abr<=80]/wa[abr>=40]/ba/b"
 
 
+def pick_formats(j, want, height=720):
+    """The same choice as fmt_selector / speech_selector, made from a link's full format list (no second visit)."""
+    ok = [f for f in j.get("formats") or [] if f.get("url") and (f.get("protocol") or "https").split("+")[0] in
+          ("https", "http", "m3u8", "m3u8_native")]
+    aud = [f for f in ok if f.get("acodec") not in (None, "none") and f.get("vcodec") in (None, "none")]
+    vid = [f for f in ok if f.get("vcodec") not in (None, "none") and f.get("acodec") in (None, "none")]
+    both = [f for f in ok if f.get("vcodec") not in (None, "none") and f.get("acodec") not in (None, "none")]
+    rate = lambda f: f.get("abr") or f.get("tbr") or 0
+    if want == "speech":
+        small = [f for f in aud if 40 <= rate(f) <= 80]
+        pick = max(small, key=rate) if small else (min([f for f in aud if rate(f) >= 40], key=rate, default=None)
+                                                    or max(aud, key=rate, default=None))
+        return [pick] if pick else []
+    best_a = max(aud, key=lambda f: (f.get("ext") == "m4a", rate(f)), default=None)
+    if want == "audio":
+        return [best_a] if best_a else ([max(both, key=rate)] if both else [])
+    h = int(height if height is not None else 720)
+    h = 99999 if h <= 0 or h >= 9999 else h
+    fit = [f for f in vid if (f.get("height") or 0) <= h]
+    v = max(fit, key=lambda f: (f.get("height") or 0, f.get("ext") == "mp4", rate(f)), default=None)
+    if v and best_a:
+        return [v, best_a]
+    fit = [f for f in both if (f.get("height") or 0) <= h]
+    return [max(fit, key=lambda f: (f.get("height") or 0, rate(f)))] if fit else []
+
+
 def stream_urls(url, want, height=720):
     """Direct media addresses for a link (cached for 3 hours). Returns (inputs, duration);
     inputs = [(url, headers_text, kind)] with kind 'a', 'v' or 'av'."""
@@ -652,6 +691,14 @@ def stream_urls(url, want, height=720):
         hit = _streams.get(key)
         if hit and time.time() - hit[0] < 3 * 3600:
             return hit[1]
+    full = _infos.get(url)                  # the link was read when it was added: choose from that answer
+    if full and time.time() - full[0] < 2 * 3600:
+        fmts = pick_formats(full[1], want, height)
+        if fmts:
+            res = (_inputs(fmts), float(full[1].get("duration") or 0))
+            with _streams_lock:
+                _streams[key] = (time.time(), res)
+            return res
     sel = speech_selector() if want == "speech" else fmt_selector(want, height)
     try:
         j = _json(url, ["-f", sel], 180)
@@ -667,15 +714,7 @@ def stream_urls(url, want, height=720):
         with _streams_lock:
             _streams[key] = (time.time(), res)
         return res
-    fmts = j.get("requested_formats") or [j]
-    inputs = []
-    for f in fmts:
-        if not f.get("url"):
-            continue
-        hv = f.get("vcodec") not in (None, "none")
-        ha = f.get("acodec") not in (None, "none")
-        hdr = "".join(f"{k}: {v}\r\n" for k, v in (f.get("http_headers") or {}).items())
-        inputs.append((f["url"], hdr, "av" if hv and ha else ("v" if hv else "a")))
+    inputs = _inputs(j.get("requested_formats") or [j])
     if not inputs:
         raise RuntimeError("no direct stream")
     res = (inputs, float(j.get("duration") or 0))
@@ -684,7 +723,20 @@ def stream_urls(url, want, height=720):
     return res
 
 
+def _inputs(fmts):
+    out = []
+    for f in fmts:
+        if not f.get("url"):
+            continue
+        hv = f.get("vcodec") not in (None, "none")
+        ha = f.get("acodec") not in (None, "none")
+        hdr = "".join(f"{k}: {v}\r\n" for k, v in (f.get("http_headers") or {}).items())
+        out.append((f["url"], hdr, "av" if hv and ha else ("v" if hv else "a")))
+    return out
+
+
 def forget_streams(url):
+    _infos.pop(url, None) if url else _infos.clear()
     with _streams_lock:
         for k in [k for k in _streams if not url or k[0] == url]:
             _streams.pop(k, None)
