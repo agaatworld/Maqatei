@@ -1327,6 +1327,7 @@ def main():
         return
     srv.daemon_threads = True
     android_autostart()
+    media.use_updated_ytdlp()
     jobs.start()
     if db.get_settings().get("lan_on") and not HOSTED:
         lan.start(Handler)

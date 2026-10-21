@@ -370,8 +370,9 @@ YTDLP_URL = "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp"
 
 
 def update_ytdlp(state=None):
-    """Android app: replace the bundled yt-dlp with the newest release (YouTube changes often).
-    The new file is checked before it replaces the old one, so a bad download never breaks downloads."""
+    """Android app: use the newest yt-dlp release (YouTube changes often).
+    The new file is checked before it is used, so a bad download never breaks downloads."""
+    global YTDLP
     import urllib.request
     import zipfile
     state = state if state is not None else {}
@@ -393,7 +394,12 @@ def update_ytdlp(state=None):
     if not YTDLP:
         state.update(running=False, msg="")
         return False
-    tmp = Path(YTDLP + ".new")
+    # The new version goes into a NEW file. A download that is running keeps reading its own file: Python reads a
+    # zip program piece by piece, so replacing the file under it broke it ("bad local file header").
+    from . import db
+    d = db.DATA / "ytdlp"
+    d.mkdir(parents=True, exist_ok=True)
+    tmp = d / f"yt-dlp-{int(time.time())}.part"
     try:
         old = ytdlp_version()
         with urllib.request.urlopen(YTDLP_URL, timeout=60) as r, open(tmp, "wb") as f:
@@ -404,7 +410,13 @@ def update_ytdlp(state=None):
         test = subprocess.run([PYTHON, str(tmp), "--version"], capture_output=True, text=True, timeout=60, env=UTF8_ENV)
         if test.returncode != 0:
             raise RuntimeError(test.stderr[-200:])
-        os.replace(tmp, YTDLP)
+        new_file = tmp.with_suffix(".zip")
+        os.replace(tmp, new_file)
+        YTDLP = str(new_file)
+        (d / "current").write_text(YTDLP, encoding="utf-8")
+        for f in d.glob("yt-dlp-*.zip"):                # older copies: only once nothing can still be using them
+            if f != new_file and time.time() - f.stat().st_mtime > 12 * 3600:
+                f.unlink(missing_ok=True)
         new = ytdlp_version()
         state.update(running=False, msg=f"yt-dlp {new}" + ("" if new != old else " ✓"), checked=time.time())
         return True
@@ -412,6 +424,20 @@ def update_ytdlp(state=None):
         tmp.unlink(missing_ok=True)
         state.update(running=False, msg=f"Update failed: {e}"[:220])
         return False
+
+
+def use_updated_ytdlp():
+    """At start: use the newest yt-dlp downloaded earlier (the bundled one stays untouched)."""
+    global YTDLP
+    if not YTDLP:
+        return
+    from . import db
+    try:
+        cur = (db.DATA / "ytdlp" / "current").read_text(encoding="utf-8").strip()
+        if cur and Path(cur).is_file() and Path(cur).stat().st_size > 1_000_000:
+            YTDLP = cur
+    except OSError:
+        pass
 
 
 def auto_update_ytdlp(state):
