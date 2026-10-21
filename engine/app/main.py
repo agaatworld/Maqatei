@@ -924,6 +924,7 @@ def all_jobs(r, op):
             jobs.pause(j["id"])
     elif op == "resume":
         db.run("UPDATE jobs SET status='queued', message='Waiting' WHERE status='paused'")
+        jobs._wake.set()
     return {"ok": True}
 
 

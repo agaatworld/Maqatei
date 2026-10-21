@@ -20,16 +20,20 @@ OVERLAP = 4          # only when no pause was found: seconds shared by neighbour
 WORKERS = 4          # pieces whose audio is prepared at the same time
 _running = {}        # job id -> cancel Event
 _lock = threading.Lock()
+_wake = threading.Event()   # set when a task is added or resumed: the loop starts it at once
 
 
 # ---------- queue API ----------
 def add(kind, item_id, title, bookmark_id=None, **params):
+    _wake.set()
     return db.run("INSERT INTO jobs (kind, item_id, bookmark_id, title, params, status, progress, "
                   "message, created, updated) VALUES (?,?,?,?,?,'queued',0,?,?,?)",
                   (kind, item_id, bookmark_id, title, json.dumps(params), M("waiting"), db.now(), db.now()))
 
 
 def set_job(jid, **kw):
+    if kw.get("status") == "queued":
+        _wake.set()
     kw["updated"] = db.now()
     cols = ", ".join(f"{k}=?" for k in kw)
     db.run(f"UPDATE jobs SET {cols} WHERE id=?", (*kw.values(), jid))
@@ -75,7 +79,10 @@ def _loop():
             _tick()
         except Exception:
             traceback.print_exc()
-        time.sleep(0.7)
+        # with work: look again soon. Without: rest (saves battery) until a new task wakes the loop.
+        busy = bool(_running) or db.one("SELECT 1 FROM jobs WHERE status='queued'")
+        _wake.wait(0.7 if busy else 30)
+        _wake.clear()
 
 
 def _tick():

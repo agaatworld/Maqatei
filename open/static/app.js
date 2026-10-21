@@ -365,7 +365,9 @@ const PL = {
     el.preload = 'metadata'; el.src = mediaURL(this.item.file); el.setAttribute('playsinline', '');
     el.playbackRate = this.rateV;
     el.addEventListener('loadedmetadata', () => { if (at) el.currentTime = at; if (autoplay) el.play().catch(() => {}); }, { once: true });
-    el.addEventListener('play', () => ui()); el.addEventListener('pause', () => ui());
+    el.addEventListener('play', () => { ui(); if (window.MaqatiApp && MaqatiApp.playing) MaqatiApp.playing(true); });
+    el.addEventListener('pause', () => { ui(); if (window.MaqatiApp && MaqatiApp.playing) MaqatiApp.playing(false); });
+    el.addEventListener('ended', () => { if (window.MaqatiApp && MaqatiApp.playing) MaqatiApp.playing(false); });
     /* tap = play/pause; double-tap on the right/left side = forward/back (like YouTube) */
     let tapT = null, tapAt = 0;
     el.addEventListener('click', e => {
@@ -1604,7 +1606,10 @@ async function pollJobs() {
     if (pj) { const b = $('#pjob'); if (b) b.innerHTML = projJobHTML(pj); }
   }
 }
-setInterval(pollJobs, 1500);
+/* tasks are checked every 1.5 s while something runs, every 5 s otherwise, and not at all while the app is in the background */
+let pollN = 0;
+setInterval(() => { if (document.hidden) return; pollN++; if (S.jobs.some(j => j.status === 'running' || j.status === 'queued') || pollN % 3 === 0) pollJobs(); }, 1500);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pollJobs(); });
 
 /* ================= settings ================= */
 async function vSettings() {

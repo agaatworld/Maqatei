@@ -89,6 +89,7 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         EngineService.uiOpen = true
+        if (::web.isInitialized) web.resumeTimers()
         if (prefs.getBoolean("setup_done", false)) {
             Engine.useSharedLibraryIfAllowed(this)
             EngineService.start(this)
@@ -96,8 +97,16 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    /** Off screen: the page stops working (unless a lesson is playing), and the engine may rest. */
+    override fun onPause() {
+        super.onPause()
+        EngineService.uiOpen = false
+        if (::web.isInitialized && !EngineService.playing) web.pauseTimers()
+    }
+
     override fun onDestroy() {
         EngineService.uiOpen = false
+        EngineService.playing = false
         super.onDestroy()
     }
 
@@ -379,6 +388,7 @@ class MainActivity : AppCompatActivity() {
     // ---------- what the page can ask the app to do ----------
     inner class Bridge {
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
+        @JavascriptInterface fun playing(on: Boolean) { EngineService.playing = on }
         @JavascriptInterface fun checkUpdate() { ui.post { Updater.check(this@MainActivity, quiet = false) } }
         @JavascriptInterface fun askBackground() { ui.post { this@MainActivity.askBackground() } }
         @JavascriptInterface fun print(title: String?) {

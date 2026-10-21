@@ -27,7 +27,8 @@ class EngineService : Service() {
         const val NOTE_ID = 1
         const val ACTION_PAUSE_ALL = "pause_all"
         const val ACTION_QUIT = "quit"
-        @Volatile var uiOpen = false          // the Maqati window exists (music may be playing from the engine)
+        @Volatile var uiOpen = false          // the Maqati window is on screen
+        @Volatile var playing = false         // a lesson is playing (also with the screen off): the engine serves it
 
         fun start(ctx: Context) {
             val i = Intent(ctx, EngineService::class.java)
@@ -94,13 +95,15 @@ class EngineService : Service() {
             } else {
                 holdLocks(false)
                 update("مقاطع جاهز", "لا توجد مهام الآن", null)
-                // nothing to do and the window is closed: stop, to save the battery
-                if (!uiOpen && System.currentTimeMillis() - idleSince > 3 * 60_000) {
+                if (uiOpen || playing) idleSince = System.currentTimeMillis()
+                // nothing to do, not on screen, nothing playing: stop after 10 minutes, to save the battery
+                // (coming back within 10 minutes is instant; after that the engine starts again in a few seconds)
+                if (!uiOpen && !playing && System.currentTimeMillis() - idleSince > 10 * 60_000) {
                     quit()
                     return
                 }
             }
-            Thread.sleep(if (busy) 2000 else 5000)
+            Thread.sleep(if (busy) 2000 else if (uiOpen || playing) 5000 else 15000)
         }
     }
 
