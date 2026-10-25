@@ -140,11 +140,12 @@ def del_folder(r, fid):
 @route("POST", "/api/links")
 def add_links(r):
     ids = []
-    for url in (r.body.get("text") or "").split():
-        if not url.startswith(("http://", "https://")):
-            continue
+    urls = [u for u in (r.body.get("text") or "").split() if u.startswith(("http://", "https://"))]
+    name = (r.body.get("name") or "").strip()[:200]     # a name the user typed: kept instead of the site's title
+    for url in urls:
+        title = name if name and len(urls) == 1 else url
         iid = db.run("INSERT INTO items (folder_id, title, kind, url, media, duration, created) VALUES (?,?,?,?,?,?,?)",
-                     (r.body.get("folder_id"), url, "link", url, "video" if "youtu" in url else "audio", 0, db.now()))
+                     (r.body.get("folder_id"), title, "link", url, "video" if "youtu" in url else "audio", 0, db.now()))
         jobs.add("info", iid, M("t_read_link", t=url), mode=r.body.get("mode") or db.get_settings().get("auto_download", "video"),
                  **({"q": int(r.body["q"])} if r.body.get("q") else {}))
         ids.append(iid)

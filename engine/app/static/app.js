@@ -27,6 +27,7 @@ const TX = {
   queued_n: ['{0} added to Tasks', 'أُضيفت {0} إلى المهام'], nothing_to_do: ['Everything here is already transcribed', 'كل ما هنا مُفرَّغ مسبقًا'],
   links: ['Links', 'روابط'], files: ['Files', 'ملفات'], links_ph: ['Paste one or many links — one per line', 'الصق رابطًا أو أكثر — كل رابط في سطر'],
   links_hint: ['YouTube, SoundCloud and most audio/video sites.', 'يوتيوب وساوند كلاود ومعظم مواقع الصوت والمرئي.'],
+  add_name: ['Name (optional)', 'الاسم (اختياري)'], add_name_ph: ['Leave empty to use the title from the site', 'اتركه فارغًا ليُؤخذ العنوان من الموقع'], add_name_ph_f: ['Leave empty to use the file name', 'اتركه فارغًا ليُؤخذ اسم الملف'], add_name_many: ['Several at once: each keeps its own title', 'عدة عناصر معًا: يأخذ كل منها عنوانه'],
   links_hint_web: ['On the web version: YouTube links only, through free mirror servers (they are sometimes slow or down). Other sites need the Android or desktop app.', 'في نسخة الويب: روابط يوتيوب فقط، عبر خوادم وسيطة مجانية (تكون أحيانًا بطيئة أو معطّلة). المواقع الأخرى تحتاج تطبيق الأندرويد أو الكمبيوتر.'],
   choose_files: ['Choose from device', 'اختر من الجهاز'], drop: ['or drop files here', 'أو اسحب الملفات هنا'],
   into_folder: ['Save in folder', 'احفظ في مجلد'], uploading: ['Uploading… {0}%', 'جارٍ الرفع… {0}٪'],
@@ -840,12 +841,24 @@ async function addSheet() {
         <option value="9999">⭐ ${t('q_orig')}</option>${[1080, 720, 480, 360, 240, 144].map(h => `<option value="${h}">${h}p</option>`).join('')}</select></div></div>
     <div data-p="files"><div class="field"><button class="btn soft big wide" id="pick">📁 ${t('choose_files')}</button><input type="file" id="fileIn" multiple accept="audio/*,video/*" hidden>
       <small id="fl" style="text-align:center">${t('drop')}</small><div id="upProg" class="muted" style="margin-top:8px"></div></div></div>
+    <div class="field" id="addNameF"><label>✏️ ${t('add_name')}</label><input id="addName" dir="auto" maxlength="200" autocomplete="off"><small id="addNameH"></small></div>
     <div class="field"><label>${t('into_folder')}</label><select id="addFolder">${folderOpts}</select></div>`,
     `<button class="btn pri big wide" id="addGo">＋ ${t('add')}</button>`, (d, close) => {
-      const setMode = m => { mode = m; store.set('addmode', m); $$('[data-m]', d).forEach(b => b.classList.toggle('on', b.dataset.m === m)); $$('[data-p]', d).forEach(p => p.hidden = p.dataset.p !== m); };
+      // the Add button is greyed out until there is a link or a file; the name field suits one item at a time
+      const urls = () => ($('#linksIn', d).value.match(/https?:\/\/\S+/g) || []);
+      const refresh = () => {
+        const n = mode === 'links' ? urls().length : files.length;
+        $('#addGo', d).disabled = !n;
+        const one = n <= 1;
+        $('#addName', d).disabled = !one;
+        $('#addName', d).placeholder = one ? t(mode === 'links' ? 'add_name_ph' : 'add_name_ph_f') : '';
+        $('#addNameH', d).textContent = one ? '' : t('add_name_many');
+      };
+      const setMode = m => { mode = m; store.set('addmode', m); $$('[data-m]', d).forEach(b => b.classList.toggle('on', b.dataset.m === m)); $$('[data-p]', d).forEach(p => p.hidden = p.dataset.p !== m); refresh(); };
+      $('#linksIn', d).addEventListener('input', refresh);
       $$('[data-m]', d).forEach(b => b.onclick = () => setMode(b.dataset.m)); setMode(mode);
       wireSegc(d, (k, v) => { if (k === 'how') { how = v; $('#addQF', d).hidden = v !== 'video'; } }); $('#addQF', d).hidden = how !== 'video';
-      const fin = $('#fileIn', d), setFiles = fl => { files = [...fl]; $('#fl', d).textContent = files.map(f => f.name).join('، '); };
+      const fin = $('#fileIn', d), setFiles = fl => { files = [...fl]; $('#fl', d).textContent = files.map(f => f.name).join('، '); refresh(); };
       $('#pick', d).onclick = () => fin.click(); fin.onchange = () => setFiles(fin.files);
       d.ondragover = e => e.preventDefault(); d.ondrop = e => { e.preventDefault(); setMode('files'); setFiles(e.dataTransfer.files); };
       $('#addGo', d).onclick = async () => {
@@ -853,13 +866,14 @@ async function addSheet() {
         try {
           if (mode === 'links') {
             const txt = $('#linksIn', d).value; if (!/https?:\/\//.test(txt)) return toast(t('no_links'));
-            const r = await post('/api/links', { text: txt, folder_id: fid ? +fid : null, mode: how, q: +$('#addQ', d).value || null });
+            const r = await post('/api/links', { text: txt, folder_id: fid ? +fid : null, mode: how, q: +$('#addQ', d).value || null, name: $('#addName', d).value.trim() || null });
             close('ok'); toast(t('added')); pollJobs(); location.hash = '#/item/' + r.ids[0];
           } else {
             if (!files.length) return toast(t('choose_first'));
             if (IS_WEB) { const lim = /iPhone|iPad/.test(navigator.userAgent) ? 300e6 : 1500e6; const big = files.find(f => f.size > lim); if (big) return toast(t('too_big_web', big.name, size(big.size), size(lim)), null, 9000); }
             $('#addGo', d).disabled = true;
             const ids = await upload(files, fid, p => $('#upProg', d).textContent = t('uploading', Math.round(p * 100)));
+            const nm = $('#addName', d).value.trim(); if (nm && ids.length === 1) await patch('/api/items/' + ids[0], { title: nm });
             close('ok'); toast(t('added')); location.hash = '#/item/' + ids[0];
           }
         } catch (e) { toast(e.message); $('#addGo', d).disabled = false; }
