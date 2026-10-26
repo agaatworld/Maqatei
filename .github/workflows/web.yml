@@ -1,5 +1,5 @@
 # Keeps the web version (iPhone and computer: the same Maqati running in the browser) up to date in open/.
-# GitHub Pages publishes the main branch, so it is at https://beaconcrest8.github.io/maqati/open/
+# GitHub Pages publishes the main branch, so it is at https://agaatworld.github.io/Maqatei/open/
 name: Web version
 on:
   push:

@@ -1,6 +1,6 @@
 # Maqati — guide for Claude
 
-The owner (GitHub `beaconcrest8`, earlier `turathpro`) is not technical. Reply in **simple Arabic**, short, numbered
+The owner (GitHub `beaconcrest8`, suspended Oct 2026; the project now lives in `agaatworld/Maqatei`; earlier `turathpro`) is not technical. Reply in **simple Arabic**, short, numbered
 steps, never ask him to run commands or build anything. He installs APKs from GitHub Releases.
 
 The full product brief is in `docs/REBUILD-BRIEF.md`. Read sections 4 (features that must never be lost),
@@ -16,7 +16,7 @@ The full product brief is in `docs/REBUILD-BRIEF.md`. Read sections 4 (features 
 - Signing key in `signing/` must never change.
 
 ## Web version (iPhone and computer)
-- https://beaconcrest8.github.io/maqati/open/ — the same engine in the browser: Pyodide runs `engine/app` (via
+- https://agaatworld.github.io/Maqatei/open/ — the same engine in the browser: Pyodide runs `engine/app` (via
   `engine/app/webapi.py`), ffmpeg.wasm does media work, Groq is called from the page. Files live in IndexedDB.
 - Sources: `web/` (boot.js, sw.js, boot.html, build.py). `python3 web/build.py` writes `open/` (committed; GitHub
   Pages publishes main). The web workflow rebuilds `open/` if it is stale. **`app/` is the Android project — never

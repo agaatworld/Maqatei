@@ -17,7 +17,7 @@ android {
         targetSdk 35
         versionCode vMajor * 10000 + vMinor * 100 + vPatch
         versionName engineVersion
-        buildConfigField "String", "UPDATE_REPO", '"beaconcrest8/maqati"'
+        buildConfigField "String", "UPDATE_REPO", '"agaatworld/Maqatei"'
     }
 
     // The same key signs every release forever, or Android refuses to install an update over the old app.

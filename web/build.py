@@ -1,5 +1,5 @@
 """Builds the iPhone version (a web app) into site/: the normal Maqati screens and engine, plus Pyodide (Python in
-the browser) and ffmpeg.wasm. It is kept in open/ on the main branch, which GitHub Pages publishes: https://beaconcrest8.github.io/maqati/open/
+the browser) and ffmpeg.wasm. It is kept in open/ on the main branch, which GitHub Pages publishes: https://agaatworld.github.io/Maqatei/open/
 
     python3 web/build.py [out_dir]     (default: open/)
 

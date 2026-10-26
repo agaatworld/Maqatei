@@ -1842,7 +1842,7 @@ async function vSettings() {
       ${window.MaqatiApp ? `<div class="btns" style="margin-top:10px"><button class="btn ghost" data-act="apk-battery">🔋 ${LANG === 'ar' ? 'السماح بالعمل في الخلفية' : 'Allow background work'}</button></div>` : ''}</div>` : ''}
     ${h.desktop ? `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
       <p class="muted">${t('version')}: <b>${esc(h.version)}</b></p>
-      <div class="btns"><a class="btn pri big" href="https://github.com/beaconcrest8/maqati/releases/latest" target="_blank">⬇ ${t('upd_find')}</a></div>
+      <div class="btns"><a class="btn pri big" href="https://github.com/agaatworld/Maqatei/releases/latest" target="_blank">⬇ ${t('upd_find')}</a></div>
       <div class="btns" style="margin-top:10px"><button class="btn" data-act="upd-ytdlp">⬇ ${t('upd_ytdlp')}</button><span class="muted small" id="ytdlpMsg">${esc(h.update.msg)}</span></div></div>` : ''}
     ${h.hosted || h.apk || h.web || h.desktop ? '' : `<div class="card pad"><h3>🔄 ${t('s_update')}</h3>
       <p class="muted">${t('version')}: <b>${esc(h.version)}</b></p>

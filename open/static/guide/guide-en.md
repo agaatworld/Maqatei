@@ -6,7 +6,7 @@ Maqati keeps your video and audio lessons in one place. You can cut any part wit
 
 No Termux, no commands.
 
-1. Open **github.com/beaconcrest8/maqati/releases** and download the file ending in `arm64-v8a.apk`.
+1. Open **github.com/agaatworld/Maqatei/releases** and download the file ending in `arm64-v8a.apk`.
 2. Open it and tap **Install** (allow installing from this source if asked).
 3. Open Maqati. The first time, allow **files**, **notifications** and **background work**. The first start takes about a minute.
 4. While something runs, a Maqati notification shows the progress. It keeps working with the screen off; unfinished work continues after a restart.

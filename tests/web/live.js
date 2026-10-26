@@ -1,7 +1,7 @@
 /* Opens the published web version in Chromium and uses it like a person: add a file, cut a part, transcribe
    (Groq is imitated), reload, settings, wide screens. Screenshots go to the folder given. */
 const { chromium } = require('playwright');
-const P = process.argv[2], URL0 = process.argv[3] || 'https://beaconcrest8.github.io/maqati/open/';
+const P = process.argv[2], URL0 = process.argv[3] || 'https://agaatworld.github.io/Maqatei/open/';
 (async () => {
   const b = await chromium.launch();
   const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
