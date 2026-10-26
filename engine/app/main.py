@@ -612,6 +612,22 @@ def make_nosil(r):
     return {"ok": True, "id": jobs.add("nosil", item["id"], M("t_nosil", t=f.stem), path=path)}
 
 
+@route("POST", "/api/suggest-name")
+def suggest_name(r):
+    """A name for a part being cut: the person accepts it with one tap or writes their own."""
+    i = db.one("SELECT * FROM items WHERE id=?", (int(r.body.get("item_id") or 0),))
+    a, b = num(r.body.get("start")), num(r.body.get("end"))
+    if not i or a is None or b is None or b <= a:
+        raise HTTPError(400)
+    if os.environ.get("MAQATI_WEB") == "1":
+        return smart.suggest_name(i, a, b)
+    out = {}
+    th = threading.Thread(target=lambda: out.update(smart.suggest_name(i, a, b)), daemon=True)
+    th.start()
+    th.join(40)                                  # never keep the person waiting: no answer in time, no suggestion
+    return out or {"name": "", "source": None}
+
+
 @route("POST", "/api/demusic")
 def make_demusic(r):
     """A copy without music: of a downloaded file (path), or of the whole lesson (item_id; a link is fetched first)."""

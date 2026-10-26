@@ -68,7 +68,13 @@ object MusicServer {
         val env = OrtEnvironment.getEnvironment()
         if (session == null || sessionPath != model.path) {
             session?.close()
-            val opts = OrtSession.SessionOptions().apply { setIntraOpNumThreads(Runtime.getRuntime().availableProcessors().coerceAtLeast(1)) }
+            // a phone has little memory: no extra memory pools (about half the memory, a little slower)
+            val opts = OrtSession.SessionOptions().apply {
+                setIntraOpNumThreads(Runtime.getRuntime().availableProcessors().coerceIn(1, 4))
+                setCPUArenaAllocator(false)
+                setMemoryPatternOptimization(false)
+                setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL)
+            }
             session = env.createSession(model.path, opts)
             sessionPath = model.path
         }

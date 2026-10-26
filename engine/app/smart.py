@@ -222,3 +222,60 @@ def get_map(item_id):
         return dict(json.loads(r["data"]), created=r["created"])
     except ValueError:
         return None
+
+
+# ---------- a suggested name for a part, while cutting it ----------
+NAME = """هذا نص مقطع من درس أو محاضرة{ctx}. اقترح له عنوانًا قصيرًا من 2 إلى 7 كلمات يصف موضوعه بدقة، كما يُكتب عنوان مقطع.
+إن كان المقطع سؤالًا من سائل فاجعل العنوان السؤال نفسه مختصرًا. اكتب بلغة النص نفسها، بلا علامات تنصيص.
+أعد JSON فقط: {{"title":"..."}}
+
+النص:
+{text}"""
+_model_cache = {}
+
+
+def _words(text, n=8):
+    w = " ".join((text or "").split()).split(" ")
+    return " ".join(w[:n]) + ("…" if len(w) > n else "")
+
+
+def suggest_name(item, a, b):
+    """{name, source}: from the map if a chapter starts here, else the model reads what is said in [a, b]
+    (transcribing those minutes first if the lesson has no transcript), else the first words said."""
+    from . import media, transcribe
+    s = db.get_settings()
+    web = os.environ.get("MAQATI_WEB") == "1"
+    segs = [x for x in item_segments(item["id"], a, b) if x["end"] > a + 0.2]
+    text = " ".join(x["text"].strip() for x in segs)
+    m = get_map(item["id"])
+    chap = next((c for c in (m or {}).get("chapters", []) if abs(c["t"] - a) < 3 and c["end"] >= b - 3), None)
+    if chap:
+        return {"name": chap["title"], "source": "map"}
+    key = (s.get("groq_key") or "").strip()
+    if not text and key and not web and b - a <= 900:      # no transcript here yet: hear these minutes once
+        src = item["file"] and (db.LIBRARY / item["file"])
+        if src and src.exists():
+            import tempfile
+            from pathlib import Path
+            tmp = Path(tempfile.mkdtemp()) / ("p" + media.SPEECH_EXT)
+            try:
+                media.speech_chunk(src, tmp, a, b - a)
+                text = transcribe.groq(tmp, s)["text"]
+            except Exception:
+                text = ""
+            finally:
+                tmp.unlink(missing_ok=True)
+    if not text:
+        return {"name": "", "source": None}
+    if key and not web:
+        try:
+            model = _model_cache.get("m") or pick_model(s)
+            _model_cache["m"] = model
+            ctx = f" بعنوان «{item['title']}»" if item.get("title") else ""
+            got = chat(s, model, NAME.format(ctx=ctx, text=text[:4000]))
+            name = str(got.get("title") or "").strip().strip('"«»')
+            if name:
+                return {"name": name[:120], "source": "ai"}
+        except Exception:
+            pass
+    return {"name": _words(text), "source": "words"}

@@ -195,7 +195,8 @@ const TX = {
   map_part: ['Make it a part', 'اجعله مقطعًا'], map_all_parts: ['All as parts', 'الكل مقاطع'],
   map_all_q: ['Make {0} parts, one for each chapter shown?', 'إنشاء {0} مقطعًا، مقطع لكل باب ظاهر؟'], map_parts_done: ['{0} parts added', 'أضيف {0} مقطعًا'],
   map_none: ['Nothing of this kind in this lesson.', 'لا يوجد شيء من هذا النوع في الدرس.'],
-  sec_n: ['{0} s', '{0} ث'], share: ['Share', 'مشاركة'], share_moment: ['Link that starts at', 'رابط يبدأ من'], share_link: ['The link', 'الرابط'],
+  sec_n: ['{0} s', '{0} ث'], sugg: ['Suggested:', 'اسم مقترح:'], sugg_ok: ['Use it', 'اعتمده'], sugg_done: ['Name added — you can still change it', 'وُضع الاسم — ويمكنك تعديله'],
+  sugg_wait: ['Suggesting a name from what is said…', 'يقترح اسمًا مما قيل في المقطع…'], share: ['Share', 'مشاركة'], share_moment: ['Link that starts at', 'رابط يبدأ من'], share_link: ['The link', 'الرابط'],
   share_text: ['As text', 'كنص'], share_saved: ['This device cannot share files: it was saved to Downloads instead', 'هذا الجهاز لا يشارك الملفات: حُفظ في التنزيلات بدلًا من ذلك'], nomusic_dl: ['Without music', 'بدون موسيقى'], nomusic_item: ['Remove the music (whole lesson)', 'حذف الموسيقى من الدرس كله'],
   nomusic_queued: ['Removing the music — the file appears in Files and is saved by itself', 'يُحذف ما في الملف من موسيقى — يظهر في الملفات ويُحفظ وحده'], saved_phone: ['Saving to Downloads…', 'يُحفظ في التنزيلات…'], nosil_make: ['Copy without silences', 'نسخة بدون سكتات'], nosil_dl: ['Without silences', 'بدون سكتات'],
   nosil_queued: ['Making a copy without silences — it appears in Files', 'تُصنع نسخة بدون سكتات — تظهر في الملفات'],
@@ -1250,13 +1251,25 @@ function wireTE(d, pl, onChange) {
   onChange && onChange();
 }
 /* a new part: name, start and end — typed, nudged or taken from the player */
+/* a suggested name while cutting: one tap accepts it, or the person writes their own */
+function suggestInto(d, input, itemId, a, b) {
+  const box = $('.sugg', d); if (!box) return;
+  box.innerHTML = `<span class="spin"></span> <span class="muted small">${t('sugg_wait')}</span>`;
+  post('api/suggest-name', { item_id: itemId, start: a, end: b }).then(r => {
+    if (!box.isConnected) return;
+    if (!r || !r.name) { box.innerHTML = ''; return; }
+    box.innerHTML = `<span class="sgl">✨ ${t('sugg')}</span><b class="sgn" dir="auto">${esc(r.name)}</b><button type="button" class="btn pri sgok">✓ ${t('sugg_ok')}</button>`;
+    $('.sgok', box).onclick = () => { input.value = r.name; input.dispatchEvent(new Event('input')); box.innerHTML = `<span class="okc">✓ ${t('sugg_done')}</span>`; };
+  }).catch(() => { if (box.isConnected) box.innerHTML = ''; });
+}
 async function partSheet(itemId, a, b) {
   const pl = mainPlayer(itemId);
-  const r = await sheet(`✂️ ${t('new_part')}`, `<div class="field"><label>${t('part_name')}</label><input id="pn" dir="auto" placeholder="${t('part_name_ph')}"></div>
+  const r = await sheet(`✂️ ${t('new_part')}`, `<div class="field"><label>${t('part_name')}</label><input id="pn" dir="auto" placeholder="${t('part_name_ph')}"><div class="sugg"></div></div>
       ${teHTML('pa', t('start'), a, 'start')}${teHTML('pb', t('end'), b, 'end')}<p class="muted small" id="plen"></p>`,
     `<button class="btn pri big" value="save">✓ ${t('save_only')}</button><button class="btn soft big" value="mp3">⬇ ${t('save_mp3')}</button><button class="btn soft big" value="tr">📝 ${t('save_tr')}</button><button class="btn soft big" value="proj">${PJADD} ${t('save_proj')}</button>`,
     d => { const upd = () => { const x = parseT($('#pa', d).value), y = parseT($('#pb', d).value); $('#plen', d).innerHTML = x != null && y != null && y > x ? `${t('len')}: <bdi dir="ltr">${fmtP(y - x)}</bdi>` : `<span class="warnc">${t('bad_time')}</span>`; };
-      wireTE(d, pl, upd); const i = $('#pn', d); setTimeout(() => i.focus(), 60); i.onkeydown = e => { if (e.key === 'Enter') $('button[value=save]', d).click(); }; });
+      wireTE(d, pl, upd); const i = $('#pn', d); setTimeout(() => i.focus(), 60); i.onkeydown = e => { if (e.key === 'Enter') $('button[value=save]', d).click(); };
+      suggestInto(d, i, itemId, a, b); });
   if (!r || r === 'x') return false;
   const name = $('#pn').value.trim(), x = parseT($('#pa').value), y = parseT($('#pb').value);
   if (x == null || y == null || y <= x) { toast(t('bad_time')); return false; }
@@ -1371,9 +1384,9 @@ async function finishPick(i) {
   let title = '';
   S.pick = null; loadTranscript();
   const r = await sheet(`📌 ${t('new_ex')}<br><span class="small muted">${rng(start, end)}</span>`,
-    `<div class="field"><label>${t('ex_title')}</label><input id="xt" dir="auto" placeholder="${t('ex_title_ph')}"></div><p class="expreview" dir="auto">${esc(text)}</p>`,
+    `<div class="field"><label>${t('ex_title')}</label><input id="xt" dir="auto" placeholder="${t('ex_title_ph')}"><div class="sugg"></div></div><p class="expreview" dir="auto">${esc(text)}</p>`,
     `<button class="btn pri big" value="save">✓ ${t('save_only')}</button><button class="btn soft big" value="mp3">⬇ ${t('save_mp3')}</button><button class="btn soft big" value="proj">${PJADD} ${t('save_proj')}</button>`,
-    d => { const x = $('#xt', d); setTimeout(() => x.focus(), 60); x.oninput = () => title = x.value; });
+    d => { const x = $('#xt', d); setTimeout(() => x.focus(), 60); x.oninput = () => title = x.value; suggestInto(d, x, itemId, start, end); });
   if (!r || r === 'x') return;
   const x = await post(`api/items/${itemId}/excerpts`, { start, end, title: title.trim() });
   if (r === 'mp3') { wantSave(await post(`api/excerpts/${x.id}/clip`, { fmt: 'mp3' })); pollJobs(); }

@@ -34,11 +34,21 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def reply(self, obj):
+        body = json.dumps({"choices": [{"message": {"content": json.dumps(obj, ensure_ascii=False)}}]}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
     def chat(self, raw):
         """Lesson map requests: a chapter every 6 lines, a question chapter where someone asks."""
         req = json.loads(raw)
         text = req["messages"][-1]["content"]
         LOG.append({"chat": req["model"], "chars": len(text)})
+        if "اقترح له عنوانًا" in text:                 # a name for a part
+            return self.reply({"title": "عنوان مقترح: " + text.split("النص:")[-1].split()[0]})
         lines = [(int(m[1]), m[2]) for m in re.finditer(r"^\[(\d+)\] (.*)$", text, re.M)]
         ch = []
         for k, (n, t) in enumerate(lines):

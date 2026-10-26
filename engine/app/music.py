@@ -152,6 +152,14 @@ def _separate_numpy(model, src_wav, dst_wav, cancel=None, progress=None):
 
 def _separate_android(model, src_wav, dst_wav, cancel=None, progress=None):
     """The app does the work; this side waits, shows its progress and can stop it."""
+    import hashlib                                    # the phone closed the app while it worked: don't loop forever
+    tries = db.DATA / "music-tries" / (hashlib.sha1(str(dst_wav).encode()).hexdigest()[:16] + ".txt")
+    tries.parent.mkdir(parents=True, exist_ok=True)   # (kept outside the task's folder, which a restart may empty)
+    n = int(tries.read_text() or 0) if tries.exists() else 0
+    if n >= 2:
+        tries.unlink(missing_ok=True)
+        raise RuntimeError(M("music_memory"))
+    tries.write_text(str(n + 1))
     prog = dst_wav.with_suffix(".progress")
     stop = dst_wav.with_suffix(".stop")
     q = urllib.request.quote
@@ -181,6 +189,8 @@ def _separate_android(model, src_wav, dst_wav, cancel=None, progress=None):
         th.join(1.0)
     prog.unlink(missing_ok=True)
     stop.unlink(missing_ok=True)
+    if not res.get("error"):
+        tries.unlink(missing_ok=True)
     if res.get("error") or (res.get("body") or {}).get("error"):
         raise RuntimeError(res.get("error") or res["body"]["error"])
 

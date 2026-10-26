@@ -83,6 +83,8 @@ MSG = {
     "music_prepare": ("Preparing the sound…", "تجهيز الصوت…"),
     "music_working": ("Removing the music… {p}%", "حذف الموسيقى… {p}٪"),
     "music_writing": ("Writing the file…", "كتابة الملف…"),
+    "music_memory": ("The phone ran out of memory while removing the music (it closed the app twice). Close other apps and try again, or do it on the computer.",
+                     "نفدت ذاكرة الهاتف أثناء حذف الموسيقى (أغلق التطبيق مرتين). أغلق التطبيقات الأخرى وأعد المحاولة، أو اعملها على الكمبيوتر."),
     "music_na": ("Music removal is not available on this device yet.", "حذف الموسيقى غير متاح على هذا الجهاز بعد."),
     "hosted_disabled": ("Not available on the hosted version — this is a shared server.",
                         "غير متاح على النسخة المستضافة — هذا خادم مشترك."),

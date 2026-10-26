@@ -202,6 +202,12 @@ def main():
               and ch[0]["t"] <= 1 and "summary" not in mp, (js and js[0]["message"], ch[:3]))
         check("map needs a transcript", call("POST", f"/api/items/{v}/action", {"action": "map"}, ok=False) == 400)
 
+        print("suggested names")
+        s1 = call("POST", "/api/suggest-name", {"item_id": a, "start": 40, "end": 52})
+        s2 = call("POST", "/api/suggest-name", {"item_id": v, "start": 10, "end": 20})
+        check("a name is suggested from what is said (transcript, or heard on the spot)",
+              s1.get("source") == "ai" and s1["name"].startswith("عنوان مقترح") and s2.get("source") == "ai" and s2["name"], (s1, s2))
+
         print("silences")
         fa = call("GET", f"/api/items/{a}")["file"]          # the test lesson: 3.2 s of sound, then 0.8 s of silence
         first = call("GET", "/api/silence?path=" + quote(fa))
