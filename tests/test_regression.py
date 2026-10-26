@@ -51,6 +51,17 @@ def wait_jobs(pred=lambda j: True, sec=240):
     return [j for j in call("GET", "/api/jobs") if pred(j)]
 
 
+def decoded(p):
+    """Length by decoding every sample (does not trust the file's header)."""
+    err = subprocess.run(["ffmpeg", "-v", "info", "-nostats", "-i", str(p), "-map", "0:a:0", "-f", "null", "-"],
+                         capture_output=True, text=True).stderr
+    t = [l for l in err.splitlines() if "time=" in l]
+    return t[-1].split("time=")[1].split()[0] if t else "?"
+
+
+FFV = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True).stdout.split("\n")[0][:60]
+
+
 def dur(p):
     out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(p)],
                          capture_output=True, text=True).stdout
@@ -187,7 +198,8 @@ def main():
         js = wait_jobs(lambda j: j["kind"] == "nosil")
         ja = [j for j in js if j["item_id"] == a]
         got = dur(lib / ja[0]["result"]) if ja and ja[0]["status"] == "done" else -1
-        check("copy without silences is shorter by exactly the skipped time", abs(got - (95 - sil["saved"])) < 0.15, (got, sil["saved"], ja and ja[0]["message"]))
+        check("copy without silences is shorter by exactly the skipped time", abs(got - (95 - sil["saved"])) < 0.15,
+              (got, sil["saved"], ja and ja[0]["message"], ja and decoded(lib / ja[0]["result"]), FFV))
         jv = [j for j in js if j["item_id"] == v]
         check("video with no silences says so", jv and jv[0]["status"] == "done" and not jv[0]["result"] and "سكتات" in jv[0]["message"], jv and (jv[0]["status"], jv[0]["message"]))
         call("POST", "/api/bookmarks/action", {"ids": [ba], "action": "mp3", "nosil": True})

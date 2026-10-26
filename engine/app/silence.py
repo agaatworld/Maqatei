@@ -127,10 +127,10 @@ def without(src, dst, sp, total, video=False, fps=25.0, cancel=None, progress=No
         fc = ["-filter_complex_script", str(script)]
     try:
         if video:
-            media.ffmpeg(["-i", str(src), *fc, "-map", "[v]", "-map", "[a]", *media.X264, "-movflags", "+faststart",
+            media.ffmpeg(["-i", str(src), *fc, "-map", "[v]", "-map", "[a]", "-map_metadata", "-1", *media.X264, "-movflags", "+faststart",
                           str(dst)], cancel, new_len, progress)
         else:
-            media.ffmpeg(["-i", str(src), *fc, "-map", "[a]", *media.mp3_quality(abr), str(dst)],
+            media.ffmpeg(["-i", str(src), *fc, "-map", "[a]", "-map_metadata", "-1", *media.mp3_quality(abr), str(dst)],
                          cancel, new_len, progress)
     finally:
         if not WEB:
