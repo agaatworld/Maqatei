@@ -103,6 +103,23 @@ assert j[0]['status']=='done', 'VIDEO PART FROM LINK FAILED'
 print('video part straight from a link OK')"
 log
 
+# removing music on the phone: the app's own code runs the real model (downloaded on first use) on the 20 s tone
+python3 -c "import json;h=json.load(open('$OUT/health.json'));assert h.get('music'), 'MUSIC REMOVAL NOT AVAILABLE';print('music removal available')"
+T0=$(date +%s)
+MJ=$(curl -sf -X POST -H 'Content-Type: application/json' -d "{\"item_id\":$ID}" http://127.0.0.1:8775/api/demusic | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")
+for i in $(seq 1 900); do
+  curl -sf http://127.0.0.1:8775/api/jobs -o $OUT/jobs-music.json
+  if python3 -c "import json,sys;j=[x for x in json.load(open('$OUT/jobs-music.json')) if x['id']==$MJ];sys.exit(0 if j and j[0]['status'] in ('done','error') else 1)"; then break; fi
+  sleep 1
+done
+python3 -c "
+import json
+j=[x for x in json.load(open('$OUT/jobs-music.json')) if x['id']==$MJ][0]
+print('  ', j['status'], (j.get('result') or j.get('message') or '')[:300], '· took', $(date +%s) - $T0, 's')
+assert j['status']=='done' and 'موسيقى' in j['result'], 'MUSIC REMOVAL FAILED'
+print('music removal on the phone OK')"
+log
+
 # the page itself shows (screenshot kept as an artifact)
 sleep 3
 adb exec-out screencap -p > $OUT/app.png

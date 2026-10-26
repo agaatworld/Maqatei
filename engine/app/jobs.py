@@ -9,12 +9,12 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import db, export, media, silence, smart, transcribe
+from . import db, export, media, music, silence, smart, transcribe
 from .i18n import M
 from .media import Cancelled
 
 CATEGORY = {"info": "info", "fetch": "dl", "clip": "dl", "convert": "dl", "project": "dl", "transcribe": "tx",
-            "levels": "info", "nosil": "dl", "map": "tx"}
+            "levels": "info", "nosil": "dl", "map": "tx", "demusic": "ai"}
 CHUNK = 300          # transcribe in pieces of about 5 minutes; finished pieces are kept, so work resumes
 REACH = 25           # a piece ends at the pause nearest its 5-minute mark, looking this far either side
 OVERLAP = 4          # only when no pause was found: seconds shared by neighbours so no word is lost
@@ -88,7 +88,7 @@ def _loop():
 
 def _tick():
     s = db.get_settings()
-    limits = {"info": 4, "dl": int(s["max_downloads"]), "tx": int(s["max_transcribes"])}
+    limits = {"info": 4, "dl": int(s["max_downloads"]), "tx": int(s["max_transcribes"]), "ai": 1}   # music removal: one at a time
     with _lock:
         busy = {}
         for jid in _running:
@@ -404,6 +404,11 @@ def run_clip(job, p, ev, progress):
     wd = work(job["id"], fresh=True)
     dst = cut_part(item, start, end, fmt, d / base, ev, lambda x, m=None: progress(x * (0.5 if p.get("nosil") else 1), m),
                    wd, p.get("q"))
+    if p.get("demusic"):                       # the part without its music (the cut with music is not kept)
+        clean = media.unique(dst.with_name(f"{dst.stem} ({M('music_name')}){dst.suffix if fmt != 'mp3' else '.mp3'}"))
+        music.remove_music(dst, clean, fmt != "mp3", ev, lambda x, m=None: progress(0.3 + x * 0.6, m), wd / "music")
+        dst.unlink(missing_ok=True)
+        dst = clean
     if p.get("nosil"):                         # the part without its silences (the cut with them is not kept)
         try:
             dst = no_silence(dst, ev, lambda x, m=None: progress(0.5 + x / 2, m), wd, replace=True, q=p.get("q"))
@@ -453,6 +458,30 @@ def run_levels(job, p, ev, progress):
 
 def run_nosil(job, p, ev, progress):
     dst = no_silence(lib(p["path"]), ev, progress, work(job["id"], fresh=True))
+    shutil.rmtree(db.WORK / f"job{job['id']}", ignore_errors=True)
+    return rel(dst)
+
+
+def run_demusic(job, p, ev, progress):
+    """A file (or the whole lesson) with only the voice: speech or nasheed stay, instruments and beats go."""
+    if not music.available():
+        raise RuntimeError(M("music_na"))
+    item = item_of(job)
+    wd = work(job["id"])
+    if p.get("path"):
+        src = lib(p["path"])
+    else:
+        src = local_source(item)
+        if not src:                            # a link not downloaded yet: get its sound first
+            progress(0, M("downloading"))
+            src = media.ytdlp_download(item["url"], wd / "src.%(ext)s", "audio", 0, ev, lambda x: progress(x * 0.1, M("downloading")))
+    _, kind = media.probe(src)
+    video = kind == "video"
+    out_dir = src.parent if p.get("path") or local_source(item) else ensure_dir(item)
+    dst = media.unique(out_dir / f"{src.stem} ({M('music_name')}){'.mp4' if video else '.mp3'}")
+    tmp = wd / ("demusic" + dst.suffix)
+    music.remove_music(src, tmp, video, ev, progress, wd / "music")
+    shutil.move(str(tmp), dst)
     shutil.rmtree(db.WORK / f"job{job['id']}", ignore_errors=True)
     return rel(dst)
 
@@ -720,4 +749,5 @@ def write_files(t):
 
 
 RUNNERS = {"info": run_info, "fetch": run_fetch, "clip": run_clip, "convert": run_convert,
-           "transcribe": run_transcribe, "project": run_project, "levels": run_levels, "nosil": run_nosil, "map": run_map}
+           "transcribe": run_transcribe, "project": run_project, "levels": run_levels, "nosil": run_nosil, "map": run_map,
+           "demusic": run_demusic}

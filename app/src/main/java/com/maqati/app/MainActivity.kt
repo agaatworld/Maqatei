@@ -19,6 +19,7 @@ import android.os.PowerManager
 import android.print.PrintAttributes
 import android.print.PrintManager
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.provider.Settings
 import android.view.Gravity
 import android.view.View
@@ -52,6 +53,7 @@ class MainActivity : AppCompatActivity() {
     private val prefs by lazy { getSharedPreferences("maqati", MODE_PRIVATE) }
     private var loaded = false
     private var pendingShare: String? = null
+    private var pendingFile: Uri? = null
     private var fileCallback: ValueCallback<Array<Uri>>? = null
 
     private val pickFiles = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { res ->
@@ -78,12 +80,14 @@ class MainActivity : AppCompatActivity() {
             }
         })
         pendingShare = sharedLink(intent)
+        pendingFile = sharedFile(intent)
         nextSetupStep()
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         sharedLink(intent)?.let { pendingShare = it; if (loaded) addShared() }
+        sharedFile(intent)?.let { pendingFile = it; if (loaded) addShared() }
     }
 
     override fun onResume() {
@@ -372,7 +376,46 @@ class MainActivity : AppCompatActivity() {
         return Regex("https?://\\S+").find(text)?.value
     }
 
+    /** An audio or video file shared to Maqati from another app (WhatsApp, Files, the gallery…). */
+    private fun sharedFile(i: Intent?): Uri? {
+        if (i?.action != Intent.ACTION_SEND) return null
+        val type = i.type ?: return null
+        if (!type.startsWith("audio/") && !type.startsWith("video/")) return null
+        @Suppress("DEPRECATION")
+        return if (Build.VERSION.SDK_INT >= 33) i.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java) else i.getParcelableExtra(Intent.EXTRA_STREAM)
+    }
+
+    /** Send a shared file to the engine as a new lesson (the same as choosing it in "Add"). */
+    private fun addSharedFile(uri: Uri) {
+        thread {
+            var name = "file"
+            var size = -1L
+            try {
+                contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE), null, null, null)?.use { c ->
+                    if (c.moveToFirst()) { c.getString(0)?.let { name = it }; if (!c.isNull(1)) size = c.getLong(1) }
+                }
+            } catch (e: Exception) { }
+            var tmp: java.io.File? = null
+            val id = try {
+                if (size < 0) {                          // size unknown: keep a copy first (the engine needs the length)
+                    tmp = java.io.File(cacheDir, "shared.bin")
+                    contentResolver.openInputStream(uri)!!.use { inp -> tmp.outputStream().use { inp.copyTo(it) } }
+                    size = tmp.length()
+                }
+                val c = java.net.URL(Engine.BASE + "/api/upload?name=" + java.net.URLEncoder.encode(name, "UTF-8")).openConnection() as java.net.HttpURLConnection
+                c.requestMethod = "POST"; c.doOutput = true; c.setFixedLengthStreamingMode(size)
+                (tmp?.inputStream() ?: contentResolver.openInputStream(uri)!!).use { inp -> c.outputStream.use { inp.copyTo(it) } }
+                JSONObject(c.inputStream.bufferedReader().readText()).getJSONArray("ids").getInt(0)
+            } catch (e: Exception) { null } finally { tmp?.delete() }
+            ui.post {
+                Toast.makeText(this, if (id != null) "أُضيف الملف إلى المكتبة ✓" else "تعذّرت إضافة الملف", Toast.LENGTH_LONG).show()
+                if (id != null) web.evaluateJavascript("location.hash='#/item/$id'", null)
+            }
+        }
+    }
+
     private fun addShared() {
+        pendingFile?.let { pendingFile = null; addSharedFile(it) }
         val link = pendingShare ?: return
         pendingShare = null
         thread {
@@ -389,6 +432,27 @@ class MainActivity : AppCompatActivity() {
     inner class Bridge {
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
         @JavascriptInterface fun playing(on: Boolean) { EngineService.playing = on }
+        /** Share text (a link to a moment, a title) to WhatsApp or any app. */
+        @JavascriptInterface fun share(text: String) {
+            ui.post {
+                val i = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
+                startActivity(Intent.createChooser(i, "مشاركة"))
+            }
+        }
+        /** Share one of the library's files (a part, a lesson, a transcript) to any app. */
+        @JavascriptInterface fun shareFile(path: String, mime: String?) {
+            ui.post {
+                try {
+                    val f = java.io.File(Engine.libraryDir(this@MainActivity), path).canonicalFile
+                    if (!f.path.startsWith(Engine.libraryDir(this@MainActivity).canonicalPath) || !f.isFile) throw IllegalArgumentException(path)
+                    val uri = androidx.core.content.FileProvider.getUriForFile(this@MainActivity, "$packageName.files", f)
+                    val i = Intent(Intent.ACTION_SEND).setType(mime ?: "*/*").putExtra(Intent.EXTRA_STREAM, uri).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    startActivity(Intent.createChooser(i, "مشاركة"))
+                } catch (e: Exception) {
+                    Toast.makeText(this@MainActivity, "تعذّرت مشاركة الملف", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         @JavascriptInterface fun checkUpdate() { ui.post { Updater.check(this@MainActivity, quiet = false) } }
         @JavascriptInterface fun askBackground() { ui.post { this@MainActivity.askBackground() } }
         @JavascriptInterface fun print(title: String?) {

@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
-from . import db, export, jobs, lan, media, search, silence, smart, transcribe
+from . import db, export, jobs, lan, media, music, search, silence, smart, transcribe
 from .i18n import M, lang as ui_lang
 from .version import VERSION
 
@@ -421,7 +421,7 @@ def clip_file(r):
         extra = {"excerpt_id": p["excerpt_id"]} if p.get("excerpt_id") else {}
         jobs.add("clip", i["id"], M("t_mp3_part" if p.get("fmt", "mp3") == "mp3" else "t_video_part", l=label, t=i["title"]),
                  j["bookmark_id"], fmt=p.get("fmt", "mp3"), start=a, end=e, name=p.get("name"), **extra, **({"q": p["q"]} if p.get("q") else {}),
-                 **({"nosil": 1} if p.get("nosil") else {}))
+                 **({"nosil": 1} if p.get("nosil") else {}), **({"demusic": 1} if p.get("demusic") else {}))
         return {"ok": True}
     if act == "transcribe":
         label = p.get("name") or media.short_time(p.get("start") or 0)
@@ -451,6 +451,9 @@ def marks_action(r):
             tag = (f" · {q}p" if action == "video" else f" · {q}k") if q else ""
             ns = {"nosil": 1} if r.body.get("nosil") else {}
             tag += f" · {M('nosil_name')}" if ns else ""
+            if r.body.get("demusic"):
+                ns["demusic"] = 1
+                tag += f" · {M('music_name')}"
             ids.append(jobs.add("clip", i["id"], M("t_mp3_part" if action == "mp3" else "t_video_part", l=label, t=i["title"]) + tag,
                                 m["id"], fmt=action, **common, **({"q": q} if q else {}), **ns))
         elif action == "transcribe":
@@ -550,7 +553,10 @@ def clip_excerpt(r, xid):
     fmt, q = r.body.get("fmt", "mp3"), int(r.body.get("q") or 0)
     label = x["title"] or media.short_time(x["start"])
     ns = {"nosil": 1} if r.body.get("nosil") else {}
-    jid = jobs.add("clip", i["id"], M("t_mp3_part" if fmt == "mp3" else "t_video_part", l=label, t=i["title"]) + (f" · {M('nosil_name')}" if ns else ""), None,
+    if r.body.get("demusic"):
+        ns["demusic"] = 1
+    tag = (f" · {M('nosil_name')}" if ns.get("nosil") else "") + (f" · {M('music_name')}" if ns.get("demusic") else "")
+    jid = jobs.add("clip", i["id"], M("t_mp3_part" if fmt == "mp3" else "t_video_part", l=label, t=i["title"]) + tag, None,
                    fmt=fmt, start=x["start"], end=x["end"], name=x["title"], excerpt_id=x["id"], **({"q": q} if q else {}), **ns)
     return {"ok": True, "id": jid}
 
@@ -604,6 +610,24 @@ def make_nosil(r):
     if not item:
         raise HTTPError(404, "lesson not found")
     return {"ok": True, "id": jobs.add("nosil", item["id"], M("t_nosil", t=f.stem), path=path)}
+
+
+@route("POST", "/api/demusic")
+def make_demusic(r):
+    """A copy without music: of a downloaded file (path), or of the whole lesson (item_id; a link is fetched first)."""
+    path = r.body.get("path") or ""
+    if path:
+        f = _lib_file(path)
+        item = _item_of_file(path, r.body.get("item_id"))
+        name = f.stem
+    else:
+        item = db.one("SELECT * FROM items WHERE id=?", (int(r.body.get("item_id") or 0),))
+        name = item and item["title"]
+    if not item:
+        raise HTTPError(404, "lesson not found")
+    if not music.available():
+        raise HTTPError(400, M("music_na"))
+    return {"ok": True, "id": jobs.add("demusic", item["id"], M("t_demusic", t=name), **({"path": path} if path else {}))}
 
 
 # ---------- what a folder holds: lessons, parts, excerpts ----------
@@ -1018,7 +1042,7 @@ _update = {"running": False, "msg": ""}
 @route("GET", "/api/health")
 def health(r):
     ver = media.ytdlp_version()
-    return {"version": VERSION, "apk": APK, "cookies": bool(media.cookies_file()), "ffmpeg": bool(media.FFMPEG), "ytdlp": ver, "offline_engine": transcribe.engine_ok(),
+    return {"version": VERSION, "apk": APK, "music": music.available(), "cookies": bool(media.cookies_file()), "ffmpeg": bool(media.FFMPEG), "ytdlp": ver, "offline_engine": transcribe.engine_ok(),
             "js": media.JS_RUNTIME, "library": "-" if HOSTED else str(db.LIBRARY), "update": _update, "android": ANDROID,
             "hosted": HOSTED, "desktop": DESKTOP, "user": os.environ.get("MAQATI_USERNAME") if HOSTED else None}
 

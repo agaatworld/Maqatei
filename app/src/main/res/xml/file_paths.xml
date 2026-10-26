@@ -3,4 +3,6 @@
     <cache-path name="updates" path="updates/" />
     <external-path name="maqati" path="Maqati/" />
     <external-files-path name="library" path="." />
+    <external-path name="storage" path="." />
+    <files-path name="internal" path="." />
 </paths>

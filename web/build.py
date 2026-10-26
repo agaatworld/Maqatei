@@ -78,7 +78,8 @@ def main():
     for f in [OUT / "static" / "app.js", *(OUT / "static" / "guide").glob("*.html")]:
         f.write_text(rel(f.read_text(encoding="utf-8")), encoding="utf-8")
     man = json.loads((APP / "static" / "manifest.webmanifest").read_text(encoding="utf-8"))
-    man.update(start_url="./", scope="./", name="مقاطع Maqati", short_name="مقاطع", background_color="#F6F3EC", theme_color="#0F5C4D")
+    man.update(start_url="./", scope="./", name="مقاطع Maqati", short_name="مقاطع", background_color="#F6F3EC", theme_color="#0F5C4D",
+               share_target={"action": "./", "method": "GET", "params": {"title": "title", "text": "text", "url": "url"}})
     for i in man["icons"]:
         i["src"] = i["src"].lstrip("/")
     (OUT / "manifest.webmanifest").write_text(json.dumps(man, ensure_ascii=False), encoding="utf-8")

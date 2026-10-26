@@ -195,7 +195,9 @@ const TX = {
   map_part: ['Make it a part', 'اجعله مقطعًا'], map_all_parts: ['All as parts', 'الكل مقاطع'],
   map_all_q: ['Make {0} parts, one for each chapter shown?', 'إنشاء {0} مقطعًا، مقطع لكل باب ظاهر؟'], map_parts_done: ['{0} parts added', 'أضيف {0} مقطعًا'],
   map_none: ['Nothing of this kind in this lesson.', 'لا يوجد شيء من هذا النوع في الدرس.'],
-  sec_n: ['{0} s', '{0} ث'], saved_phone: ['Saving to Downloads…', 'يُحفظ في التنزيلات…'], nosil_make: ['Copy without silences', 'نسخة بدون سكتات'], nosil_dl: ['Without silences', 'بدون سكتات'],
+  sec_n: ['{0} s', '{0} ث'], share: ['Share', 'مشاركة'], share_moment: ['Link that starts at', 'رابط يبدأ من'], share_link: ['The link', 'الرابط'],
+  share_text: ['As text', 'كنص'], share_saved: ['This device cannot share files: it was saved to Downloads instead', 'هذا الجهاز لا يشارك الملفات: حُفظ في التنزيلات بدلًا من ذلك'], nomusic_dl: ['Without music', 'بدون موسيقى'], nomusic_item: ['Remove the music (whole lesson)', 'حذف الموسيقى من الدرس كله'],
+  nomusic_queued: ['Removing the music — the file appears in Files and is saved by itself', 'يُحذف ما في الملف من موسيقى — يظهر في الملفات ويُحفظ وحده'], saved_phone: ['Saving to Downloads…', 'يُحفظ في التنزيلات…'], nosil_make: ['Copy without silences', 'نسخة بدون سكتات'], nosil_dl: ['Without silences', 'بدون سكتات'],
   nosil_queued: ['Making a copy without silences — it appears in Files', 'تُصنع نسخة بدون سكتات — تظهر في الملفات'],
 };
 let LANG = 'ar';
@@ -280,7 +282,7 @@ function wireSegc(root, cb) { $$('[data-seg]', root).forEach(g => $$('button', g
 
 /* ================= state ================= */
 const S = { set: {}, folders: [], items: [], jobs: [], item: null, tr: { key: null, segs: [] }, pending: null, sel: new Set(), editTr: false, q: '', res: null, pick: null };
-async function loadSettings() { S.set = await api('api/settings'); LANG = S.set.lang === 'en' ? 'en' : 'ar'; applyLook(); }
+async function loadSettings() { S.set = await api('api/settings'); LANG = S.set.lang === 'en' ? 'en' : 'ar'; applyLook(); api('api/health').then(h => { S.music = !!h.music; }).catch(() => {}); }
 function applyLook() {
   const r = document.documentElement, s = S.set;
   r.lang = LANG; r.dir = LANG === 'ar' ? 'rtl' : 'ltr';
@@ -661,10 +663,46 @@ function playerToolsHTML() {
     <button class="chip ${fine ? 'on' : ''}" data-act="fine-toggle">±0.1</button>
     ${vid ? `<button class="chip" data-act="audio-only" aria-label="${t('audio_only')}">${PL.audioOnly ? '🎬' : '🎧'}</button>` : ''}
     ${vid && !PL.audioOnly ? `<button class="chip" data-act="fs" aria-label="${t('fullscreen')}">⛶</button>` : ''}
+    <button class="chip" data-act="share-now" aria-label="${t('share')}">📤</button>
     <button class="chip silc ${S.set.sil_skip ? 'on' : ''}" data-act="sil-toggle">⏩ ${t('sil_skip')}${S.set.sil_skip ? ` <small>${silLabel()}</small>` : ''}</button>
     ${S.set.sil_skip ? `<button class="chip" data-act="sil-adjust" aria-label="${t('sil_min')}">${ICON('sliders')}</button>` : ''}</div>
     ${fine ? `<div class="fine" dir="ltr"><button class="chip" data-act="fine" data-d="-1">−1</button><button class="chip" data-act="fine" data-d="-0.1">−0.1</button>
       <span class="chip ptime" id="ptime">${fmtP(PL.time())}</span><button class="chip" data-act="fine" data-d="0.1">+0.1</button><button class="chip" data-act="fine" data-d="1">+1</button></div>` : ''}`;
+}
+
+/* ================= sharing: a moment (a YouTube link that starts there), a part, a file — to WhatsApp or any app ================= */
+const momentLink = (item, at) => { const id = ytId(item && item.url); return id ? `https://youtu.be/${id}?t=${Math.max(0, Math.floor(at || 0))}` : (item && item.url) || ''; };
+const mimeOf = p => /\.mp4$/i.test(p) ? 'video/mp4' : /\.webm$/i.test(p) ? 'video/webm' : /\.mp3$/i.test(p) ? 'audio/mpeg' : /\.(m4a|aac)$/i.test(p) ? 'audio/mp4'
+  : /\.(opus|ogg)$/i.test(p) ? 'audio/ogg' : /\.(txt|srt)$/i.test(p) ? 'text/plain' : /\.pdf$/i.test(p) ? 'application/pdf' : /\.docx$/i.test(p) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : 'application/octet-stream';
+async function shareText(text) {
+  if (window.MaqatiApp && MaqatiApp.share) return MaqatiApp.share(text);
+  if (navigator.share) { try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+  copy(text);
+}
+async function shareFile(path) {
+  if (window.MaqatiApp && MaqatiApp.shareFile) return MaqatiApp.shareFile(path, mimeOf(path));
+  const name = path.split('/').pop();
+  try {
+    if (navigator.canShare) {
+      const f = new File([await (await fetch(mediaURL(path))).blob()], name, { type: mimeOf(path) });
+      if (navigator.canShare({ files: [f] })) { await navigator.share({ files: [f], title: name }); return; }
+    }
+  } catch (e) { if (e.name === 'AbortError') return; }
+  download(mediaURL(path) + '?dl=1', name); toast(t('share_saved'));
+}
+async function shareSheet(title, opts) {
+  const r = await sheet('📤 ' + title, `<div class="menu">${opts.map(([l], i) => `<button class="mi" value="s${i}" dir="auto">${l}</button>`).join('')}</div>`);
+  const o = r && /^s\d+$/.test(r) && opts[+r.slice(1)]; if (o) o[1]();
+}
+/* the moment now playing, a part, a chapter of the map */
+function shareMoment(base, at, end, title, files) {
+  const head = `${nice(title || base.title)} — ${end ? `${fmt(at)} – ${fmt(end)}` : fmt(at)}`, opts = [], link = momentLink(base, at);
+  if (ytId(base.url)) opts.push([`🔗 ${t('share_moment')} <bdi dir="ltr">${fmt(at)}</bdi>`, () => shareText(`${head}\n${link}`)]);
+  else if (base.url) opts.push([`🔗 ${t('share_link')}`, () => shareText(`${head}\n${base.url}`)]);
+  for (const f of files || []) opts.push([`📄 ${esc(f.split('/').pop())}`, () => shareFile(f)]);
+  if (!opts.length) opts.push([`📝 ${t('share_text')}`, () => shareText(head)]);
+  if (opts.length === 1) return opts[0][1]();
+  shareSheet(t('share'), opts);
 }
 
 /* ================= library ================= */
@@ -886,10 +924,11 @@ async function qMenu(el, itemId, fmtk, pick) {
 }
 const qdd = (f, attrs = '', mode = '') => `<button class="btn qdd" data-act="qmenu" data-f="${f}" ${attrs} ${mode ? `data-mode="${mode}"` : ''} aria-label="quality">▾</button>`;
 /* status-aware buttons for a cut part: shows progress, then ▶ / ⬇ when the file is ready */
-function clipBtns(jobs, match, attrs, vid, only, ns) {
+function clipBtns(jobs, match, attrs, vid, only, mode) {
+  const ns = mode === 'ns', mu = mode === 'mu';
   const one = fmtk => {
-    const j = [...jobs].reverse().find(x => x.kind === 'clip' && (x.params.fmt || 'mp3') === fmtk && !!x.params.nosil === !!ns && match(x));
-    const label = fmtk === 'mp3' ? 'MP3' : t('video'), a = attrs + (ns ? ' data-ns="1"' : '');
+    const j = [...jobs].reverse().find(x => x.kind === 'clip' && (x.params.fmt || 'mp3') === fmtk && !!x.params.nosil === ns && !!x.params.demusic === mu && match(x));
+    const label = fmtk === 'mp3' ? 'MP3' : t('video'), a = attrs + (ns ? ' data-ns="1"' : '') + (mu ? ' data-mu="1"' : '');
     if (!j) return `<span class="split"><button class="btn" data-act="clip" data-f="${fmtk}" ${a}>⬇ ${label}</button>${qdd(fmtk, a)}</span>`;
     if (j.status === 'done' && j.result) return `<span class="ready split"><button class="btn ok" data-act="play-file" data-path="${esc(j.result)}">▶ ${label}${j.taken ? ` <small class="tk">✓ ${dur(j.taken)}</small>` : ''}</button><a class="btn ok" href="${mediaURL(j.result)}?dl=1">⬇</a>${qdd(fmtk, a)}</span>`;
     if (j.status === 'error') return `<button class="btn warn" data-act="job-retry" data-j="${j.id}">⚠️ ${label} · ${t('retry_short')}</button>`;
@@ -897,8 +936,9 @@ function clipBtns(jobs, match, attrs, vid, only, ns) {
   };
   return only === 'video' ? one('video') : only === 'mp3' ? one('mp3') : one('mp3') + (vid ? one('video') : '');
 }
-/* the same part without its silences: its own clear row, its own files (the normal ones stay as they are) */
-const nsRow = (jobs, match, attrs, vid) => `<div class="nsrow"><span class="nsl">⏩ ${t('nosil_dl')}</span>${clipBtns(jobs, match, attrs, vid, null, true)}</div>`;
+/* the same part without its silences, or without its music: their own clear rows and their own files (the normal ones stay) */
+const nsRow = (jobs, match, attrs, vid) => `<div class="nsrow"><span class="nsl">⏩ ${t('nosil_dl')}</span>${clipBtns(jobs, match, attrs, vid, null, 'ns')}</div>`
+  + (S.music ? `<div class="nsrow mu"><span class="nsl">🎵 ${t('nomusic_dl')}</span>${clipBtns(jobs, match, attrs, vid, null, 'mu')}</div>` : '');
 function exCard(x, jobs, showItem) {
   const open = S.exOpen === x.id;
   return `<div class="card pad excard" data-x="${x.id}" data-item="${x.item_id}">
@@ -910,7 +950,7 @@ function exCard(x, jobs, showItem) {
     ${nsRow(jobs || [], j => j.params && j.params.excerpt_id === x.id, `data-ex="${x.id}"`, false)}
     <div class="btns">${clipBtns(jobs || [], j => j.params && j.params.excerpt_id === x.id, `data-ex="${x.id}"`, false)}
       <button class="btn gold" data-act="export-ex">📕 ${t('download')}</button><button class="btn" data-act="ex-proj">${PJADD} ${t('to_project')}</button>
-      <button class="btn ghost" data-act="ex-copy">📋</button><button class="btn ghost danger" data-act="ex-del">🗑</button></div></div>`;
+      <button class="btn ghost" data-act="ex-share" aria-label="${t('share')}">📤</button><button class="btn ghost" data-act="ex-copy">📋</button><button class="btn ghost danger" data-act="ex-del">🗑</button></div></div>`;
 }
 
 const COLORS = ['#0F5C4D', '#1F4E79', '#4A5A66', '#8A6A2B'];   // four calm colours
@@ -935,10 +975,10 @@ async function customizeFolder(f) {
 }
 
 /* ---------- add ---------- */
-async function addSheet() {
+async function addSheet(prefill) {
   await loadLib();
   const cur = (location.hash.match(/^#\/lib\/f\/(\d+)/) || [])[1] || (S.item && S.item.folder_id) || '';
-  let mode = store.get('addmode', 'links'), files = [], how = S.set.auto_download || 'video';
+  let mode = prefill ? 'links' : store.get('addmode', 'links'), files = [], how = S.set.auto_download || 'video';
   const folderOpts = `<option value="">${t('unsorted')}</option>` + S.folders.map(f => `<option value="${f.id}" ${String(cur) === String(f.id) ? 'selected' : ''}>${esc((f.icon || '📁') + ' ' + f.name)}</option>`).join('');
   await sheet('＋ ' + t('add'), `
     <div class="segc big" style="margin-bottom:14px"><button data-m="links">🔗 ${t('links')}</button><button data-m="files">📁 ${t('files')}</button></div>
@@ -963,6 +1003,7 @@ async function addSheet() {
       };
       const setMode = m => { mode = m; store.set('addmode', m); $$('[data-m]', d).forEach(b => b.classList.toggle('on', b.dataset.m === m)); $$('[data-p]', d).forEach(p => p.hidden = p.dataset.p !== m); refresh(); };
       $('#linksIn', d).addEventListener('input', refresh);
+      if (prefill) { $('#linksIn', d).value = prefill; setTimeout(refresh, 0); }
       $$('[data-m]', d).forEach(b => b.onclick = () => setMode(b.dataset.m)); setMode(mode);
       wireSegc(d, (k, v) => { if (k === 'how') { how = v; $('#addQF', d).hidden = v !== 'video'; } }); $('#addQF', d).hidden = how !== 'video';
       const fin = $('#fileIn', d), setFiles = fl => { files = [...fl]; $('#fl', d).textContent = files.map(f => f.name).join('، '); refresh(); };
@@ -1113,6 +1154,7 @@ function mapHTML() {
     <div class="maplist" id="maplist">${list.length ? list.map(c => `<div class="chap k-${c.kind}" data-ci="${c.i}">
       <button class="ct" data-act="seek" data-t="${c.t}"><span class="ck">${MAPK[c.kind] || '📌'}</span><span class="cx" dir="auto">${esc(c.title)}</span></button>
       <div class="cr"><button class="chip when" data-act="seek" data-t="${c.t}">▶ ${rng(c.t, c.end)}</button><span class="muted small">${dur(c.end - c.t)}</span><div class="grow"></div>
+      <button class="ibtn" data-act="map-share" data-ci="${c.i}" aria-label="${t('share')}">📤</button>
       <button class="ibtn" data-act="map-part" data-ci="${c.i}" aria-label="${t('map_part')}" title="${t('map_part')}">✂️</button></div></div>`).join('') : `<p class="muted">${t('map_none')}</p>`}</div>`;
 }
 function mapFollow(x) {
@@ -1418,9 +1460,10 @@ function fileRow(o) {
         <small>${o.sub ? `<span dir="auto">${o.sub}</span> · ` : ''}${ext ? `<span class="chip tiny">${esc(ext)}</span> ` : ''}${o.size != null ? `<bdi>${size(o.size)}</bdi>` : ''}${o.took || ''}</small></div></div>
     <div class="fbar">${o.when || ''}<div class="grow"></div>${o.btns || ''}
       ${media && !/بدون سكتات|no silences/.test(o.path) ? `<button class="chip nsb" data-act="nosil" data-path="${esc(o.path)}" title="${t('nosil_make')}">⏩ ${t('nosil_dl')}</button>` : ''}
+      ${media && S.music && !/بدون موسيقى|no music/.test(o.path) ? `<button class="chip nsb mu" data-act="demusic" data-path="${esc(o.path)}">🎵 ${t('nomusic_dl')}</button>` : ''}
       ${media ? `<button class="ibtn" data-act="play-file" data-path="${esc(o.path)}" aria-label="play">${IC.play}</button>` : (o.path && !o.noOpen ? `<a class="ibtn" href="${mediaURL(o.path)}" target="_blank" aria-label="open">${IC.doc}</a>` : '')}
       ${o.clip ? `<button class="ibtn" data-act="clip-proj" data-path="${esc(o.path)}" aria-label="project">${PJADD}</button>` : ''}
-      ${o.path ? `<a class="ibtn dl" href="${mediaURL(o.path)}?dl=1" aria-label="download">${IC.dl}</a>` : ''}</div></div>`;
+      ${o.path ? `<button class="ibtn" data-act="share-file" data-path="${esc(o.path)}" aria-label="${t('share')}">📤</button><a class="ibtn dl" href="${mediaURL(o.path)}?dl=1" aria-label="download">${IC.dl}</a>` : ''}</div></div>`;
 }
 function toolsHTML() {
   const d = S.item, online = !!d.url;
@@ -1429,6 +1472,7 @@ function toolsHTML() {
     ${online ? `<button class="btn big" data-act="item-action" data-a="fetch_audio" value="x">⬇ ${t('dl_audio')}</button>` : ''}
     ${d.file && d.media === 'video' ? `<button class="btn big" data-act="item-action" data-a="convert" value="x">🎵 ${t('to_mp3')}</button>` : ''}
     <button class="btn big" data-act="item-action" data-a="transcribe" value="x">📝 ${t('tr_full')}</button>
+    ${S.music ? `<button class="btn big" data-act="demusic-item" value="x">🎵 ${t('nomusic_item')}</button>` : ''}
     <button class="btn big gold" data-act="export" data-which="full" value="x">📕 ${t('export_book')}</button>
     <button class="btn big" data-act="rename-item" value="x">✏️ ${t('rename')}</button>
     <button class="btn big" data-act="move-item" value="x">📁 ${t('move')}</button>
@@ -1990,6 +2034,14 @@ const ACT = {
     await saveSet({ sil_skip: !S.set.sil_skip }); SIL.key = ''; silTools(); silLoad();
   },
   'sil-adjust': () => silSheet(),
+  'share-now': () => { const it = PL.item; if (!it) return; const base = S.item && S.item.id === it.id ? S.item : (S.items.find(i => i.id === it.parent) || it); shareMoment(base, PL.time(), null, null, it.file ? [it.file] : []); },
+  'share-file': el => shareFile(el.dataset.path),
+  'map-share': el => { const c = S.item.map.chapters[+el.dataset.ci]; shareMoment(S.item, c.t, c.end, c.title, []); },
+  'mark-share': el => { const b = markOf(el); const files = S.item.jobs.filter(j => j.kind === 'clip' && j.bookmark_id === b.id && j.status === 'done' && j.result).map(j => j.result);
+    shareMoment(S.item, b.start, b.end, b.name, [...new Set(files)].reverse()); },
+  'ex-share': el => { const x = exOf(el), it = S.items.find(i => i.id === x.item_id) || S.item; const files = ((S.item && S.item.jobs) || []).filter(j => j.kind === 'clip' && j.params && j.params.excerpt_id === x.id && j.status === 'done' && j.result).map(j => j.result);
+    const link = momentLink(it, x.start); const txt = `${x.title ? x.title + '\n' : ''}«${(x.text || '').slice(0, 600)}»\n— ${nice(it.title)} ${fmt(x.start)}${ytId(it.url) ? '\n' + link : ''}`;
+    shareSheet(t('share'), [[`📝 ${t('share_text')}`, () => shareText(txt)], ...files.map(f => [`📄 ${esc(f.split('/').pop())}`, () => shareFile(f)])]); },
   'listened-toggle': async () => {
     const d = S.item, on = !d.listened; d.listened = on ? Date.now() / 1000 : null;
     const li = S.items.find(i => i.id === d.id); if (li) li.listened = d.listened;
@@ -2008,6 +2060,8 @@ const ACT = {
     for (const c of ch) await post(`api/items/${id}/bookmarks`, { name: c.title, start: c.t, end: c.end });
     toast(t('map_parts_done', ch.length)); if (S.item && S.item.id === id) { store.set('itab', 'marks'); refreshItem(); showTab('marks'); }
   },
+  demusic: async el => { try { wantSave(await post('api/demusic', { path: el.dataset.path, item_id: S.item && S.item.id })); toast(t('nomusic_queued')); pollJobs(); } catch (e) { toast('⚠️ ' + e.message); } },
+  'demusic-item': async () => { try { wantSave(await post('api/demusic', { item_id: S.item.id })); toast(t('nomusic_queued')); pollJobs(); } catch (e) { toast('⚠️ ' + e.message); } },
   nosil: async el => { wantSave(await post('api/nosil', { path: el.dataset.path, item_id: S.item && S.item.id })); toast(t('nosil_queued')); pollJobs(); },
   'rate-next': () => { const rs = [0.75, 1, 1.25, 1.5, 2], r = rs[(rs.indexOf(PL.rateV) + 1) % rs.length]; PL.rate(r); store.set('rate', r); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
   'skip-next': () => { const ss = [5, 10, 15, 30]; store.set('skip', ss[(ss.indexOf(skipS()) + 1) % ss.length]); ui(); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
@@ -2057,18 +2111,18 @@ const ACT = {
     const f = el.dataset.f;
     qMenu(el, itemId, f, async q => {
       const qq = f === 'mp3' ? q : q, tag = f === 'mp3' ? (q ? q + ' kbps' : t('q_orig')) : (q >= 9999 ? t('q_orig') : q + 'p');
-      const nosil = !!el.dataset.ns;
-      if (el.dataset.mode === 'bulk') { const r = wantSave(await post('api/bookmarks/action', { ids: [...S.sel], action: f, q: qq, nosil })); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
+      const nosil = !!el.dataset.ns, demusic = !!el.dataset.mu;
+      if (el.dataset.mode === 'bulk') { const r = wantSave(await post('api/bookmarks/action', { ids: [...S.sel], action: f, q: qq, nosil, demusic })); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
       if (el.dataset.mode === 'fetch') { wantSave(await post(`api/items/${itemId}/action`, { action: 'fetch_video', q: qq })); toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs(); return; }
-      if (el.dataset.ex) wantSave(await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq, nosil }));
-      else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('api/bookmarks/action', { ids: [bid], action: f, q: qq, nosil })); }
+      if (el.dataset.ex) wantSave(await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq, nosil, demusic }));
+      else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('api/bookmarks/action', { ids: [bid], action: f, q: qq, nosil, demusic })); }
       toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs();
     });
   },
   clip: async el => {
-    const nosil = !!el.dataset.ns;
-    if (el.dataset.ex) { wantSave(await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f, nosil })); }
-    else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('api/bookmarks/action', { ids: [bid], action: el.dataset.f, nosil })); }
+    const nosil = !!el.dataset.ns, demusic = !!el.dataset.mu;
+    if (el.dataset.ex) { wantSave(await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f, nosil, demusic })); }
+    else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('api/bookmarks/action', { ids: [bid], action: el.dataset.f, nosil, demusic })); }
     el.disabled = true; el.innerHTML = '⏳ …'; toast(t('in_tasks')); openFiles(); pollJobs();
   },
   'job-op': async el => { await post(`api/jobs/${el.dataset.j}/${el.dataset.op}`); pollJobs(); },
@@ -2084,6 +2138,7 @@ const ACT = {
   'mark-more': el => { const b = markOf(el), vid = S.item.media === 'video' || S.item.kind === 'youtube';
     sheet(esc(b.name || t('untitled')), `<div data-b="${b.id}"><div class="menu">
       ${vid ? `<div class="mi plain">${clipBtns(S.item.jobs, j => j.bookmark_id === b.id, '', true, 'video')}</div>` : ''}
+      <button class="mi" data-act="mark-share" value="x">📤 ${t('share')}</button>
       <button class="mi" data-act="one" data-a="project" value="x">💼 ${t('to_project')}</button>
       ${b.done ? '' : `<button class="mi" data-act="mark-times" value="x">✏️ ${t('edit_times')}</button><button class="mi" data-act="mark-note" value="x">💬 ${t('note')}</button>`}
       <button class="mi" data-act="mark-done" value="x">${b.done ? '🔓 ' + t('unlock_s') : '✓ ' + t('done_lock')}</button>
@@ -2256,6 +2311,10 @@ document.addEventListener('keydown', e => {
   await loadSettings();
   await pollJobs();
   await route();
+  { // a link shared to the installed web app (Android "Share" → مقاطع) opens Add with it filled in
+    const sp = new URLSearchParams(location.search), got = ((sp.get('url') || '') + ' ' + (sp.get('text') || '')).match(/https?:\/\/\S+/);
+    if (got) { history.replaceState(null, '', location.pathname + location.hash); setTimeout(() => addSheet(got[0]), 400); }
+  }
   if (S.set.engine === 'groq' && !S.set.groq_key_set) setTimeout(() => toast(t('key_tip'), { label: t('settings'), fn: () => location.hash = '#/settings' }), 1200);
 })();
 if ('serviceWorker' in navigator && isSecureContext && !IS_WEB) navigator.serviceWorker.register('/sw.js').catch(() => {});

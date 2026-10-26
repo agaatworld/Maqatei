@@ -62,6 +62,23 @@ def decoded(p):
 FFV = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True).stdout.split("\n")[0][:60]
 
 
+def make_music_model(path):
+    """A tiny stand-in for the music-removal model: same input and output as the real one, gives back the sound."""
+    try:
+        import numpy  # noqa: F401
+        import onnxruntime  # noqa: F401
+        import onnx
+        from onnx import TensorProto, helper
+    except ImportError:
+        return False
+    io = lambda n: helper.make_tensor_value_info(n, TensorProto.FLOAT, ["batch_size", 4, 3072, 256])
+    g = helper.make_graph([helper.make_node("Identity", ["input"], ["output"])], "voice", [io("input")], [io("output")])
+    m = helper.make_model(g, opset_imports=[helper.make_opsetid("", 13)])
+    m.ir_version = 8                                   # readable by older onnxruntime too
+    onnx.save(m, str(path))
+    return True
+
+
 def dur(p):
     out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(p)],
                          capture_output=True, text=True).stdout
@@ -81,7 +98,9 @@ def main():
            "MAQATI_PORT": str(APP), "MAQATI_LAN_PORT": "8787", "PYTHONPATH": str(ROOT / "engine" / "vendor"),
            "MAQATI_GROQ_URL": f"http://127.0.0.1:{GROQ}/openai/v1/audio/transcriptions",
            "MAQATI_GROQ_CHAT_URL": f"http://127.0.0.1:{GROQ}/openai/v1/chat/completions",
-           "MAQATI_GROQ_MODELS_URL": f"http://127.0.0.1:{GROQ}/openai/v1/models"}
+           "MAQATI_GROQ_MODELS_URL": f"http://127.0.0.1:{GROQ}/openai/v1/models",
+           "MAQATI_MUSIC_MODEL_URL": (tmp / "model.onnx").as_uri()}
+    music_ok = make_music_model(tmp / "model.onnx")
     procs = [subprocess.Popen([sys.executable, str(ROOT / "tests" / "mock_groq.py"), str(GROQ)]),
              subprocess.Popen([sys.executable, "-m", "app.main"], cwd=ROOT / "engine", env=env,
                               stdout=subprocess.DEVNULL, stderr=open(tmp / "engine.log", "w"))]
@@ -213,6 +232,19 @@ def main():
                               str(lib / (js[0]["result"] or "x"))], capture_output=True, text=True).stdout if js and js[0]["status"] == "done" else ""
         check("a video part without silences stays a video", "video" in out and js[0]["result"].endswith(".mp4") and "بدون سكتات" in js[0]["result"],
               (out, js and js[0]["result"], js and js[0]["message"]))
+
+        print("music removal")
+        if music_ok:
+            jm = call("POST", "/api/demusic", {"item_id": a})["id"]
+            call("POST", "/api/bookmarks/action", {"ids": [ba], "action": "mp3", "demusic": True})
+            js = wait_jobs(lambda j: j["id"] == jm or (j["kind"] == "clip" and "موسيقى" in j["title"]), 400)
+            okm = all(j["status"] == "done" for j in js) and len(js) == 2
+            lens = [round(dur(lib / j["result"]), 1) for j in js if j["status"] == "done"]
+            check("lesson and part without music (model downloaded once, sound kept, length kept)",
+                  okm and any(abs(x - 95) < 0.6 for x in lens) and any(abs(x - 19.5) < 0.6 for x in lens)
+                  and all("بدون موسيقى" in j["result"] for j in js), [(j["status"], j["message"], j["result"]) for j in js])
+        else:
+            print("  skip (no numpy/onnxruntime/onnx here)")
 
         print("convert and tasks")
         call("POST", f"/api/items/{v}/action", {"action": "convert"})

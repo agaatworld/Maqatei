@@ -134,6 +134,7 @@ object Engine {
             "MAQATI_OPEN" to "0",
             "MAQATI_HOST" to "127.0.0.1",
             "MAQATI_PORT" to PORT.toString(),
+            "MAQATI_MUSIC_PORT" to MusicServer.PORT.toString(),
         )
     }
 

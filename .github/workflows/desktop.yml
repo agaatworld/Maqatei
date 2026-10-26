@@ -22,7 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
-      - run: pip install -q pyinstaller==6.11.1 pywebview==5.4 requests imageio-ffmpeg==0.6.0 pillow
+      - run: pip install -q pyinstaller==6.11.1 pywebview==5.4 requests imageio-ffmpeg==0.6.0 pillow numpy onnxruntime
       - name: Fetch yt-dlp and Deno
         shell: bash
         run: |
@@ -38,7 +38,7 @@ jobs:
           V=$(python -c "exec(open('engine/app/version.py').read()); print(VERSION)"); echo "VERSION=$V" >> $GITHUB_ENV
           SEP=":"; [ "${{ runner.os }}" = "Windows" ] && SEP=";"
           pyinstaller --noconfirm --clean --onefile --windowed --name Maqati --icon engine/app/static/icon-512.png \
-            --paths engine --paths engine/vendor --collect-submodules app --collect-submodules qrcode --collect-all imageio_ffmpeg \
+            --paths engine --paths engine/vendor --collect-submodules app --collect-submodules qrcode --collect-all imageio_ffmpeg --collect-all onnxruntime \
             --add-data "engine/app/static${SEP}app/static" --add-binary "desktop/bin/*${SEP}bin" desktop/maqati_desktop.py
           ls -la dist
       - name: Pack
