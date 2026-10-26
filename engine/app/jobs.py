@@ -143,6 +143,10 @@ def measure(job, p):
     item = item_of(job)
     if not item or k == "info":
         return 0, None
+    if k == "demusic":                         # learned per device: a phone is much slower than a computer
+        src = lib(p["path"]) if p.get("path") else local_source(item)
+        d = media.probe(src)[0] if src else (item["duration"] or 0)
+        return d, "demusic_phone" if music.ANDROID_PORT else "demusic_pc"
     local = "local" if local_source(item) else "net"
     dur = item["duration"] or 0
     if k == "fetch":

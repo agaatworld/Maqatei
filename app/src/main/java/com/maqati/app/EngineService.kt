@@ -44,6 +44,7 @@ class EngineService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        MusicServer.init(this)
         MusicServer.start()                     // the engine asks the app to remove music (see MusicServer)
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "مقاطع يعمل", NotificationManager.IMPORTANCE_LOW).apply {

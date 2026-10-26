@@ -11,7 +11,7 @@ import kotlin.math.roundToInt
 
 /**
  * Removing music on the phone: the same steps as the engine's music.py (UVR MDX-Net "Voc_FT"), written here because
- * the phone's Python has no numpy. Reads a 44.1 kHz stereo 16-bit WAV in pieces of about 6 s that overlap by half,
+ * the phone's Python has no numpy. Reads a 44.1 kHz stereo 16-bit WAV in pieces of about 6 s that overlap by a quarter,
  * turns each piece into a spectrogram, lets the model keep the voice, turns it back into sound and blends the pieces.
  * The model itself is behind [Model], so the sound maths can be checked without it.
  */
@@ -24,7 +24,7 @@ class MusicSeparator(private val model: Model) {
         const val DIM_F = 3072
         const val DIM_T = 256
         const val CHUNK = HOP * (DIM_T - 1)
-        const val STEP = CHUNK / 2
+        const val STEP = CHUNK * 3 / 4         // pieces overlap by a quarter (the UVR default)
         const val BINS = N_FFT / 2 + 1
         private const val PAD = N_FFT / 2
     }

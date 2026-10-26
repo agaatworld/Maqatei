@@ -118,6 +118,7 @@ j=[x for x in json.load(open('$OUT/jobs-music.json')) if x['id']==$MJ][0]
 print('  ', j['status'], (j.get('result') or j.get('message') or '')[:300], '· took', $(date +%s) - $T0, 's')
 assert j['status']=='done' and 'موسيقى' in j['result'], 'MUSIC REMOVAL FAILED'
 print('music removal on the phone OK')"
+adb logcat -d | grep MaqatiMusic | tail -3 || true
 log
 
 # the page itself shows (screenshot kept as an artifact)

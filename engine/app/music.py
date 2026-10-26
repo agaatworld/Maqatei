@@ -2,7 +2,7 @@
 UVR "MDX-Net Voc_FT" model (the owner compared two models on his own clip and chose this one).
 
 The model (66 MB) is downloaded once, on first use. The sound is read and written in pieces of about 6 seconds that
-overlap by half and are blended, so a lesson of any length needs little memory and has no seams.
+overlap by a quarter and are blended, so a lesson of any length needs little memory and has no seams.
 Where it runs:
 - PC (and the web version through the page): numpy + onnxruntime here.
 - Android: the phone's Python has no numpy, so the app's own code does it (asked over a local socket, see
@@ -25,7 +25,7 @@ COMPENSATE = 1.021
 SR = 44100
 N_FFT, HOP, DIM_F, DIM_T = 7680, 1024, 3072, 256
 CHUNK = HOP * (DIM_T - 1)            # 261120 samples ≈ 5.9 s
-STEP = CHUNK // 2
+STEP = CHUNK * 3 // 4                # pieces overlap by a quarter (the UVR default: same result as half, a third less work)
 ANDROID_PORT = os.environ.get("MAQATI_MUSIC_PORT")
 
 
