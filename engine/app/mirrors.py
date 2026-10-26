@@ -225,4 +225,9 @@ def inputs(info, want, height=720):
     vo = sorted([v for v in info["video"] if v["only"] and v["h"] <= h], key=lambda v: (not mp4(v), -v["h"]))
     if vo and aud:
         return [(vo[0]["url"], "", "v"), (aud[0]["url"], "", "a")]
-    return [(aud[0]["url"], "", "a")] if aud else []
+    # nothing this small: the nearest larger picture. A video request never gets sound only.
+    up = sorted([v for v in info["video"] if not v["only"] or aud], key=lambda v: (v["h"], v["only"], not mp4(v)))
+    if up:
+        v = up[0]
+        return [(v["url"], "", "av")] if not v["only"] else [(v["url"], "", "v"), (aud[0]["url"], "", "a")]
+    return []

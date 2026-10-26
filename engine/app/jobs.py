@@ -343,6 +343,14 @@ def cut_part(item, start, end, fmt, dst_noext, ev, progress, workdir, q=None):
     return dst
 
 
+def picture_kept(dst, fmt):
+    """A video part must have a picture: if the site gave sound only, say so instead of handing over sound."""
+    if fmt != "mp3" and media.probe(dst)[1] != "video":
+        dst.unlink(missing_ok=True)
+        raise RuntimeError(M("no_picture"))
+    return dst
+
+
 # ---------- runners ----------
 def run_info(job, p, ev, progress):
     item = item_of(job)
@@ -408,6 +416,8 @@ def run_clip(job, p, ev, progress):
     wd = work(job["id"], fresh=True)
     dst = cut_part(item, start, end, fmt, d / base, ev, lambda x, m=None: progress(x * (0.5 if p.get("nosil") else 1), m),
                    wd, p.get("q"))
+    if item["media"] == "video" or item["kind"] == "youtube":
+        picture_kept(dst, fmt)
     if p.get("demusic"):                       # the part without its music (the cut with music is not kept)
         clean = media.unique(dst.with_name(f"{dst.stem} ({M('music_name')}){dst.suffix if fmt != 'mp3' else '.mp3'}"))
         music.remove_music(dst, clean, fmt != "mp3", ev, lambda x, m=None: progress(0.3 + x * 0.6, m), wd / "music")

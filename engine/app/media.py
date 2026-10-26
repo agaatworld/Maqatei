@@ -774,6 +774,8 @@ def section_from_stream(inputs, start, length, dst, mode, cancel=None, progress=
     net = NET
     args = []
     use = inputs if mode == "video" else [i for i in inputs if i[2] in ("a", "av")][:1] or inputs[:1]
+    if mode == "video" and not any(i[2] in ("v", "av") for i in use):
+        raise RuntimeError(M("no_picture"))     # never a "video" part with sound only
     for u, hdr, _ in use:
         args += net + (["-headers", hdr] if hdr else []) + ["-ss", f"{start:.3f}", "-t", f"{length:.3f}", "-i", u]
     if mode == "speech":

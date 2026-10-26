@@ -1,6 +1,6 @@
 /* Maqati for iPhone: keeps the app on the phone (works offline) and passes the app's api/media/export requests
    to the open Maqati page, where the engine runs (see boot.js). */
-const V = 'mq-web-5.2.2-5141caf2';
+const V = 'mq-web-5.2.3-71e35c93';
 const BASE = new URL('./', self.location).pathname;          // e.g. /maqati/
 const ENGINE = /^(api\/|media\/|export(\?|$))/;
 let engineId = null;
