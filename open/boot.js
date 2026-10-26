@@ -149,9 +149,11 @@ from app import webapi
       rs.forEach((r, i) => eng.provide(n.reqs[i].key, JSON.stringify(r)));
       return;
     }
-    if (n.need === 'ffmpeg') res = await runFF(n.cmd, jid);
-    else if (n.need === 'http') res = await runHTTP(n, jid);
-    else res = [1, 'unknown'];
+    try {                                                // a failed download must end the step, never the task loop
+      if (n.need === 'ffmpeg') res = await runFF(n.cmd, jid);
+      else if (n.need === 'http') res = await runHTTP(n, jid);
+      else res = [1, 'unknown'];
+    } catch (e) { res = [1, 'ERROR: ' + (e && e.message || e)]; }
     eng.provide(n.key, JSON.stringify(res));
   }
 
@@ -165,19 +167,32 @@ from app import webapi
     return ff;
   }
   let ffLog = [];
-  /* a media address on the internet (a YouTube mirror): fetched once into ffmpeg's own files */
+  /* a media address on the internet (a YouTube mirror): fetched once into ffmpeg's own files.
+     Never waits forever: 30 seconds without a single byte (or the task paused) stops it, so the engine can say so
+     or try the next mirror. Progress shows even when the server does not give the size. */
   async function fetchIn(url, jid) {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    const total = +r.headers.get('content-length') || 0, parts = []; let got = 0;
-    const rd = r.body.getReader();
-    for (;;) {
-      const { value, done } = await rd.read(); if (done) break;
-      parts.push(value); got += value.length;
-      if (jid != null && total && got % (1 << 20) < value.length) { try { eng.progress(jid, Math.min(0.97, got / total)); } catch (e) {} }
-    }
-    const out = new Uint8Array(got); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
-    return out;
+    const ac = new AbortController(); let last = Date.now(), why = '';
+    const wd = setInterval(() => {
+      if (jid != null) { try { if (eng.status(jid) !== 'running') { why = 'stopped'; ac.abort(); } } catch (e) {} }
+      if (Date.now() - last > 30000) { why = 'no data for 30 s'; ac.abort(); }
+    }, 2000);
+    try {
+      const r = await fetch(url, { signal: ac.signal });
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      const total = +r.headers.get('content-length') || 0, parts = []; let got = 0;
+      const rd = r.body.getReader();
+      for (;;) {
+        const { value, done } = await rd.read(); if (done) break;
+        last = Date.now(); parts.push(value); got += value.length;
+        if (jid != null && got % (1 << 20) < value.length) {
+          const mb = (got / 1048576).toFixed(got < 1e8 ? 1 : 0) + ' MB';
+          try { eng.progress(jid, total ? Math.min(0.97, got / total) : Math.min(0.9, got / (got + 30e6)), '⬇ ' + mb + (total ? ' / ' + (total / 1048576).toFixed(0) + ' MB' : '')); } catch (e) {}
+        }
+      }
+      const out = new Uint8Array(got); let o = 0; for (const p of parts) { out.set(p, o); o += p.length; }
+      return out;
+    } catch (e) { throw new Error(why || (e && e.message) || String(e)); }
+    finally { clearInterval(wd); }
   }
   const NETFLAGS = new Set(['-reconnect', '-reconnect_streamed', '-reconnect_on_network_error', '-reconnect_delay_max', '-rw_timeout', '-headers']);
   async function runFF(cmd, jid) {

@@ -11,6 +11,7 @@ import array
 import hashlib
 import math
 import os
+import sys
 
 from . import db
 from . import media
@@ -98,33 +99,43 @@ def keep_of(sp, total):
     return keep
 
 
+SR, BLOCK = 48000, 240                # sound is cut in blocks of 5 ms (240 samples at 48 kHz)
+
+
 def _expr(keep):
-    """A search tree, so each frame costs a few comparisons even with thousands of silences."""
+    """keep = [(first, last+1)] block numbers. A search tree on the block number n, so each block costs a few
+    comparisons even with thousands of silences. (The block number, not the time: some ffmpeg versions give
+    every block the same time inside this filter.)"""
     def f(lo, hi):
         if lo == hi:
-            return f"gte(t,{keep[lo][0]:.3f})*lt(t,{keep[lo][1]:.3f})"
+            return f"gte(n,{keep[lo][0]})*lt(n,{keep[lo][1]})"
         mid = (lo + hi + 1) // 2
-        return f"if(lt(t,{keep[mid][0]:.3f}),{f(lo, mid - 1)},{f(mid, hi)})"
+        return f"if(lt(n,{keep[mid][0]}),{f(lo, mid - 1)},{f(mid, hi)})"
     return f(0, len(keep) - 1) if keep else "0"
 
 
 def without(src, dst, sp, total, video=False, fps=25.0, cancel=None, progress=None, abr=None):
-    """Write dst: src without the spans. Audio is cut every 5 ms; with video, cuts fall on whole frames."""
+    """Write dst: src without the spans. Sound is cut every 5 ms; with video, cuts fall on whole frames."""
     if video and fps:
         g = 1 / fps                          # same cut points for picture and sound: they stay in sync
         sp = [(math.ceil(a / g) * g, math.floor(b / g) * g) for a, b in sp]
         sp = [(a, b) for a, b in sp if b - a >= g]
     keep = keep_of(sp, total)
-    e = _expr(keep)
-    a = f"[0:a:0]aformat=sample_fmts=fltp,asetnsamples=n=240:p=0,aselect='{e}',asetpts=N/SR/TB[a]"
-    graph = (f"[0:v:0]select='{e}',setpts=N/FRAME_RATE/TB[v];" + a) if video else a
+    blk = lambda x: int(round(x * SR / BLOCK))
+    ea = _expr([(blk(a), blk(b)) for a, b in keep])
+    graph = f"[0:a:0]aformat=sample_fmts=fltp,aresample={SR},asetnsamples=n={BLOCK}:p=0,aselect='{ea}',asetpts=N/SR/TB[a]"
+    if video:
+        fr = lambda x: int(round(x * fps))
+        ev = _expr([(fr(a), fr(b)) for a, b in keep])
+        graph = f"[0:v:0]fps={fps:g},select='{ev}',setpts=N/FRAME_RATE/TB[v];" + graph
     new_len = sum(b - a_ for a_, b in keep)
-    if WEB:
-        fc = ["-filter_complex", graph]
-    else:                                    # a long lesson has thousands of silences: too long for a command line
+    script = None
+    if sys.platform == "win32" and len(graph) > 20000:     # Windows limits the length of a command line
         script = dst.with_name(dst.stem + ".filter.txt")
         script.write_text(graph, encoding="utf-8")
         fc = ["-filter_complex_script", str(script)]
+    else:
+        fc = ["-filter_complex", graph]
     try:
         if video:
             media.ffmpeg(["-i", str(src), *fc, "-map", "[v]", "-map", "[a]", "-map_metadata", "-1", *media.X264, "-movflags", "+faststart",
@@ -133,8 +144,11 @@ def without(src, dst, sp, total, video=False, fps=25.0, cancel=None, progress=No
             media.ffmpeg(["-i", str(src), *fc, "-map", "[a]", "-map_metadata", "-1", *media.mp3_quality(abr), str(dst)],
                          cancel, new_len, progress)
     finally:
-        if not WEB:
+        if script:
             script.unlink(missing_ok=True)
+    got, _ = media.probe(dst)
+    if new_len and abs(got - new_len) > max(1.0, new_len * 0.02):   # never hand over a file that still has them
+        raise RuntimeError(f"silences were not removed ({got:.1f}s instead of {new_len:.1f}s)")
     return new_len
 
 
