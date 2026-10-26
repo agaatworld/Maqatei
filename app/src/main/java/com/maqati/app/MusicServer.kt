@@ -73,64 +73,33 @@ object MusicServer {
         return mi.totalMem >= 5_500_000_000L
     }
 
-    private fun makeSession(env: OrtEnvironment, model: File, xnn: Boolean): OrtSession {
-        val threads = Runtime.getRuntime().availableProcessors().coerceIn(1, 4)
+    private fun makeSession(env: OrtEnvironment, model: File): OrtSession {
         val opts = OrtSession.SessionOptions().apply {
-            if (xnn) { addXnnpack(mapOf("intra_op_num_threads" to threads.toString())); setIntraOpNumThreads(1) }
-            else setIntraOpNumThreads(threads)
+            setIntraOpNumThreads(Runtime.getRuntime().availableProcessors().coerceIn(1, 4))
             if (!bigMemory()) { setCPUArenaAllocator(false); setMemoryPatternOptimization(false) }
             setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL)
         }
         return env.createSession(model.path, opts)
     }
 
-    /**
-     * The fastest way differs from phone to phone: the first time, one piece is done the usual way and one with
-     * XNNPACK (the phone processor's fast maths); the faster is remembered. The result is the same either way.
-     */
+    /** One model in memory, opened once and kept (opening it again and again made a phone run out of memory). */
     @Synchronized                                   // one at a time: it uses every core of the phone
     private fun separate(model: File, inp: File, out: File, compensate: Float) {
         val env = OrtEnvironment.getEnvironment()
-        val prefs = ctx?.getSharedPreferences("maqati", android.content.Context.MODE_PRIVATE)
-        val known = prefs?.getString("music_way", null)
-        var xnn = known == "xnnpack"
-        if (session == null || sessionPath != model.path + xnn) {
+        if (session == null || sessionPath != model.path) {
             session?.close(); session = null
-            session = makeSession(env, model, xnn)
-            sessionPath = model.path + xnn
+            session = makeSession(env, model)
+            sessionPath = model.path
         }
+        val sess = session!!
         val shape = longArrayOf(1, 4, MusicSeparator.DIM_F.toLong(), MusicSeparator.DIM_T.toLong())
-        var piece = 0
-        var tPlain = 0L
         val sep = MusicSeparator { x ->
-            val t0 = System.nanoTime()
-            val sess = session!!
-            val y = OnnxTensor.createTensor(env, FloatBuffer.wrap(x), shape).use { t ->
+            OnnxTensor.createTensor(env, FloatBuffer.wrap(x), shape).use { t ->
                 sess.run(mapOf(sess.inputNames.first() to t)).use { r ->
                     val fb = (r.get(0) as OnnxTensor).floatBuffer
                     FloatArray(fb.remaining()).also { fb.get(it) }
                 }
             }
-            val dt = System.nanoTime() - t0
-            if (known == null) {
-                piece++
-                if (piece == 2) {                           // the first piece also warms up: time the second one
-                    tPlain = dt
-                    try {                                   // now the same piece size with XNNPACK
-                        session?.close(); session = makeSession(env, model, true); sessionPath = model.path + true; xnn = true
-                    } catch (e: Throwable) {
-                        Log.w(TAG, "xnnpack", e)
-                        session = makeSession(env, model, false); sessionPath = model.path + false; xnn = false
-                        prefs?.edit()?.putString("music_way", "plain")?.apply()
-                    }
-                } else if (piece == 4 && xnn && prefs?.getString("music_way", null) == null) {
-                    val way = if (dt < tPlain) "xnnpack" else "plain"
-                    Log.i(TAG, "plain ${tPlain / 1_000_000} ms, xnnpack ${dt / 1_000_000} ms -> $way")
-                    prefs?.edit()?.putString("music_way", way)?.apply()
-                    if (way == "plain") { session?.close(); session = makeSession(env, model, false); sessionPath = model.path + false; xnn = false }
-                }
-            }
-            y
         }
         val prog = File(out.path.removeSuffix(".wav") + ".progress")
         val stop = File(out.path.removeSuffix(".wav") + ".stop")
