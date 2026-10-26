@@ -447,9 +447,6 @@ mark.hl{background:color-mix(in srgb,var(--gold-hi) 45%,transparent);color:inher
 .mks .rg.live{background:repeating-linear-gradient(90deg,#2B8A3E 0 6px,#69DB7C 6px 12px);opacity:.9}
 .mks .pt.live{animation:none;background:#2B8A3E}
 .mark[style*="--pc"]{border-inline-start:6px solid var(--pc)}
-.btn.ns::after{content:" ⏩";font-size:.85em}
-.qmenu .qns{display:flex;align-items:center;gap:8px;padding:9px 12px;margin:2px 0 6px;border-radius:10px;background:var(--bg2);font-weight:600;cursor:pointer}
-.qmenu .qns input{width:20px;height:20px;accent-color:var(--acc)}
 .chip.silc small{font-weight:500;opacity:.85}
 .chip.silc.on{background:var(--acc);color:#fff;border-color:var(--acc)}
 
@@ -480,3 +477,11 @@ html.isdark .chap.k-q .ct,html.isdark .trhead.chap.k-q{color:#74C0FC}
 .chip.lsc.on{background:var(--ok-soft);color:var(--ok);border-color:color-mix(in srgb,var(--ok) 40%,transparent);font-weight:700}
 .toolbar.lsbar{margin-top:-4px}
 .toolbar.lsbar .segc{flex-wrap:wrap}
+
+/* 5.1.1: a part's own "without silences" row, and its length */
+.nsrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px;padding:8px;border-radius:12px;
+  background:color-mix(in srgb,var(--acc) 8%,var(--bg));border:1.5px dashed color-mix(in srgb,var(--acc) 45%,transparent)}
+.nsrow .nsl{font-weight:800;color:var(--acc);margin-inline-end:4px}
+.mark .mtrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mark .mdur{font-weight:800;font-size:.95rem;color:var(--ink);background:var(--bg2);padding:2px 10px;border-radius:99px}
+.btn.nsb{border-color:var(--acc);color:var(--acc);font-weight:700}

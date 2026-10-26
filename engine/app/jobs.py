@@ -288,6 +288,9 @@ def cut_part(item, start, end, fmt, dst_noext, ev, progress, workdir, q=None):
     # a higher picture than the downloaded file is only on the site: cut it from there
     if src and height and item["url"] and fmt != "mp3" and height > (media.video_height(src) or 0):
         src = None
+    # a video part from a lesson downloaded as sound only: take the part's picture from the site, never sound only
+    if src and fmt != "mp3" and item["url"] and media.probe(src)[1] != "video":
+        src = None
     if src:
         if fmt != "mp3" and item["media"] != "video":
             fmt = "mp3"
@@ -404,8 +407,10 @@ def run_clip(job, p, ev, progress):
     if p.get("nosil"):                         # the part without its silences (the cut with them is not kept)
         try:
             dst = no_silence(dst, ev, lambda x, m=None: progress(0.5 + x / 2, m), wd, replace=True, q=p.get("q"))
-        except SilenceNone:
-            pass                               # nothing to take out: the part is already continuous
+        except SilenceNone:                    # nothing to take out: the part is already continuous
+            new = media.unique(dst.with_name(f"{dst.stem} ({M('nosil_name')}){dst.suffix}"))
+            dst.rename(new)
+            dst = new
     shutil.rmtree(db.WORK / f"job{job['id']}", ignore_errors=True)
     return rel(dst)
 
@@ -421,7 +426,7 @@ def no_silence(src, ev, progress, workdir, replace=False, q=None):
     total, kind = media.probe(src)
     progress(0, M("sil_measuring"))
     f = silence.measure(src, ev, lambda x: progress(x * 0.3, M("sil_measuring")), total)
-    sp = silence.spans(silence.levels(f), float(s.get("sil_min") or 0.5), s.get("sil_sens") or "normal")
+    sp = silence.spans(silence.levels(f), float(s.get("sil_min") or 0.3), s.get("sil_sens") or "normal")
     if not sp:
         raise SilenceNone(M("sil_none"))
     video = kind == "video"
@@ -430,6 +435,8 @@ def no_silence(src, ev, progress, workdir, replace=False, q=None):
     q = int(q) if q else None
     silence.without(src, tmp, sp, total, video, silence.fps_of(src) if video else 0, ev,
                     lambda x: progress(0.3 + x * 0.7, M("sil_writing", p=pct(x))), abr=q if not video and q and q < 400 else None)
+    if video and media.probe(tmp)[1] != "video":
+        raise RuntimeError("the video lost its picture while removing silences")
     dst = media.unique(src.with_name(f"{src.stem} ({M('nosil_name')}){ext}"))
     shutil.move(str(tmp), dst)
     if replace:

@@ -195,6 +195,13 @@ def main():
         got = dur(lib / js[0]["result"]) if js and js[0]["status"] == "done" else -1
         check("a part made without silences", js and 15 < got < 18.5 and "بدون سكتات" in js[0]["result"], (got, js and js[0]["message"]))
 
+        call("POST", "/api/bookmarks/action", {"ids": [bv], "action": "video", "nosil": True})
+        js = wait_jobs(lambda j: j["kind"] == "clip" and "بدون" in j["title"] and j["item_id"] == v)
+        out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v", "-show_entries", "stream=codec_type", "-of", "csv=p=0",
+                              str(lib / (js[0]["result"] or "x"))], capture_output=True, text=True).stdout if js and js[0]["status"] == "done" else ""
+        check("a video part without silences stays a video", "video" in out and js[0]["result"].endswith(".mp4") and "بدون سكتات" in js[0]["result"],
+              (out, js and js[0]["result"], js and js[0]["message"]))
+
         print("convert and tasks")
         call("POST", f"/api/items/{v}/action", {"action": "convert"})
         js = wait_jobs(lambda j: j["kind"] == "convert")

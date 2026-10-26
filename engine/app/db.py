@@ -91,7 +91,7 @@ DEFAULT_SETTINGS = {
     "lan_on": False,        # open from an iPhone or another device on the same Wi-Fi
     "lan_code": "",         # the 6-digit code that device must type once
     "sil_skip": False,      # jump over silences while listening
-    "sil_min": 0.5,         # shortest silence that is skipped (seconds)
+    "sil_min": 0.3,         # shortest silence that is skipped (seconds)
     "sil_sens": "normal",   # careful | normal | strong: how close to the background noise counts as silence
 }
 

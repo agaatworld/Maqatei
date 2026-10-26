@@ -366,7 +366,7 @@ const PL = {
   toggle() { this.playing() ? this.pause() : this.play(); },
   seek(x, play = true) { x = Math.max(0, x); if (this.yp) { this.yp.seekTo(x, true); if (play) this.yp.playVideo(); } else if (this.el) { this.el.currentTime = x; if (play) this.play(); } },
   skip(d) { this.seek(Math.min(this.time() + d, this.dur() || 1e9), this.playing()); },
-  rate(r) { this.rateV = r; if (this.yp) this.yp.setPlaybackRate(r); else if (this.el) this.el.playbackRate = r; },
+  rate(r) { this.rateV = r; if (typeof silIn !== 'undefined' && silIn) silIn = null; if (this.yp) this.yp.setPlaybackRate(r); else if (this.el) this.el.playbackRate = r; },
   isVideoFile(item) { return item && item.file && item.media === 'video'; },
   load(item, at, autoplay) {
     if (item && /^\d+$/.test(String(item.id))) store.set('last', item.id);
@@ -612,14 +612,24 @@ async function silLoad(force) {
   else { SIL.state = 'on'; SIL.spans = r.spans || []; SIL.saved = r.saved || 0; }
   silTools();
 }
-setInterval(() => {                 // 40 times a second: a half-second silence is never missed
+/* no jumping (a jump makes the sound stutter and lands late on some files): a silence is played very fast, and normal
+   speed comes back by a timer set to the exact moment the silence ends, a little before the next word. */
+const SILR = 8;                      // speed inside a silence (sound is muted above 4×: there is nothing to hear anyway)
+let silIn = null;
+function silOut() { if (!silIn) return; clearTimeout(silIn.tm); const el = silIn.el; silIn = null; if (el) el.playbackRate = PL.rateV; }
+function silCheck() {
   const el = PL.el;
-  if (!S.set.sil_skip || !SIL.spans.length || !el || el.paused || seeking || !PL.item || PL.item.file !== SIL.path) return;
+  if (!S.set.sil_skip || !SIL.spans.length || !el || el.paused || seeking || !PL.item || PL.item.file !== SIL.path) { silOut(); return; }
   const x = el.currentTime, sp = SIL.spans;
+  if (silIn) { if (x < silIn.a - 0.05 || x >= silIn.b - 0.02) silOut(); return; }
   let lo = 0, hi = sp.length - 1, i = -1;
   while (lo <= hi) { const m = (lo + hi) >> 1; if (sp[m][0] <= x) { i = m; lo = m + 1; } else hi = m - 1; }
-  if (i >= 0 && x < sp[i][1] - 0.05) el.currentTime = sp[i][1];
-}, 25);
+  if (i < 0 || x >= sp[i][1] - 0.04) return;
+  const [a, b] = sp[i], r = Math.max(b - a >= 0.8 ? SILR : 4, PL.rateV);     // short silences: gentler, so the end is exact
+  el.playbackRate = r;
+  silIn = { a, b, el, tm: setTimeout(silOut, Math.max(0, (b - 0.02 - x) / r * 1000)) };
+}
+setInterval(silCheck, 20);
 /* smooth: the bar follows the sound every frame; text and heavier work 4 times a second */
 (function frame() {
   if (PL.item) {
@@ -869,27 +879,26 @@ async function qMenu(el, itemId, fmtk, pick) {
   const opts = fmtk === 'mp3'
     ? q.audio.map(k => [k, k ? `${k} kbps${k <= 64 ? ' · ' + t('q_small') : ''}` : `⭐ ${t('q_orig')} · ${t('q_best_a')}`])
     : [[9999, `⭐ ${t('q_orig')}${q.top ? ` · ${q.top}p` : ''}`], ...q.video.filter(h => h !== q.top).map(h => [h, `${h}p${tag(h)}`])];
-  const ns = el.dataset.mode !== 'fetch';
-  box.innerHTML = `<div class="qh">${fmtk === 'mp3' ? '🎵 MP3' : '🎬 ' + t('video')} · ${t('quality')}</div>` +
-    (ns ? `<label class="qns"><input type="checkbox" id="qNs" ${store.get('nosilDl', false) ? 'checked' : ''}> ⏩ ${t('nosil_dl')}</label>` : '') +
+  box.innerHTML = `<div class="qh">${el.dataset.ns ? '⏩ ' : ''}${fmtk === 'mp3' ? '🎵 MP3' : '🎬 ' + t('video')} · ${t('quality')}</div>` +
     opts.map(([v, l], i) => `<button type="button" data-q="${v}" class="${i === 0 ? 'top' : ''}" dir="auto">${l}</button>`).join('');
-  const nsBox = $('#qNs', box); if (nsBox) nsBox.onchange = () => { store.set('nosilDl', nsBox.checked); $$('[data-act=clip]').forEach(b => b.classList.toggle('ns', nsBox.checked)); };
   box.onclick = e => { const b = e.target.closest('[data-q]'); if (!b) return; closeQ(); el.classList.remove('qopen'); pick(+b.dataset.q); };
   placeQ(box, el);
 }
 const qdd = (f, attrs = '', mode = '') => `<button class="btn qdd" data-act="qmenu" data-f="${f}" ${attrs} ${mode ? `data-mode="${mode}"` : ''} aria-label="quality">▾</button>`;
 /* status-aware buttons for a cut part: shows progress, then ▶ / ⬇ when the file is ready */
-function clipBtns(jobs, match, attrs, vid, only) {
+function clipBtns(jobs, match, attrs, vid, only, ns) {
   const one = fmtk => {
-    const j = [...jobs].reverse().find(x => x.kind === 'clip' && (x.params.fmt || 'mp3') === fmtk && match(x));
-    const label = fmtk === 'mp3' ? 'MP3' : t('video');
-    if (!j) return `<span class="split"><button class="btn ${store.get('nosilDl', false) ? 'ns' : ''}" data-act="clip" data-f="${fmtk}" ${attrs}>⬇ ${label}</button>${qdd(fmtk, attrs)}</span>`;
-    if (j.status === 'done' && j.result) return `<span class="ready split"><button class="btn ok" data-act="play-file" data-path="${esc(j.result)}">▶ ${label}${j.taken ? ` <small class="tk">✓ ${dur(j.taken)}</small>` : ''}</button><a class="btn ok" href="${mediaURL(j.result)}?dl=1">⬇</a>${qdd(fmtk, attrs)}</span>`;
+    const j = [...jobs].reverse().find(x => x.kind === 'clip' && (x.params.fmt || 'mp3') === fmtk && !!x.params.nosil === !!ns && match(x));
+    const label = fmtk === 'mp3' ? 'MP3' : t('video'), a = attrs + (ns ? ' data-ns="1"' : '');
+    if (!j) return `<span class="split"><button class="btn" data-act="clip" data-f="${fmtk}" ${a}>⬇ ${label}</button>${qdd(fmtk, a)}</span>`;
+    if (j.status === 'done' && j.result) return `<span class="ready split"><button class="btn ok" data-act="play-file" data-path="${esc(j.result)}">▶ ${label}${j.taken ? ` <small class="tk">✓ ${dur(j.taken)}</small>` : ''}</button><a class="btn ok" href="${mediaURL(j.result)}?dl=1">⬇</a>${qdd(fmtk, a)}</span>`;
     if (j.status === 'error') return `<button class="btn warn" data-act="job-retry" data-j="${j.id}">⚠️ ${label} · ${t('retry_short')}</button>`;
     return `<button class="btn busy" disabled>⏳ ${label} <bdi>${Math.round((j.progress || 0) * 100)}%</bdi>${j.eta ? ` <small class="tk">~${dur(j.eta)}</small>` : ''}</button>`;
   };
   return only === 'video' ? one('video') : only === 'mp3' ? one('mp3') : one('mp3') + (vid ? one('video') : '');
 }
+/* the same part without its silences: its own clear row, its own files (the normal ones stay as they are) */
+const nsRow = (jobs, match, attrs, vid) => `<div class="nsrow"><span class="nsl">⏩ ${t('nosil_dl')}</span>${clipBtns(jobs, match, attrs, vid, null, true)}</div>`;
 function exCard(x, jobs, showItem) {
   const open = S.exOpen === x.id;
   return `<div class="card pad excard" data-x="${x.id}" data-item="${x.item_id}">
@@ -898,6 +907,7 @@ function exCard(x, jobs, showItem) {
       <small class="muted ell" dir="auto">${showItem ? esc(nice(x.item_title)) + ' · ' : ''}${rng(x.start, x.end)}</small></div></div>
     <p class="extext ${open ? 'open' : ''}" dir="auto">${esc(x.text || '')}</p>
     ${(x.text || '').length > 160 ? `<button class="lnk" data-act="ex-more">${open ? t('less') : t('more')}</button>` : ''}
+    ${nsRow(jobs || [], j => j.params && j.params.excerpt_id === x.id, `data-ex="${x.id}"`, false)}
     <div class="btns">${clipBtns(jobs || [], j => j.params && j.params.excerpt_id === x.id, `data-ex="${x.id}"`, false)}
       <button class="btn gold" data-act="export-ex">📕 ${t('download')}</button><button class="btn" data-act="ex-proj">${PJADD} ${t('to_project')}</button>
       <button class="btn ghost" data-act="ex-copy">📋</button><button class="btn ghost danger" data-act="ex-del">🗑</button></div></div>`;
@@ -1124,6 +1134,7 @@ function marksHTML() {
   const trJob = b => [...d.jobs].reverse().find(j => j.kind === 'transcribe' && j.bookmark_id === b.id);
   return `${n ? `<div class="bulk"><b>${t('selected_n', n)}</b><div class="grow"></div>
       <span class="split"><button class="btn pri" data-act="bulk" data-a="mp3">⬇ MP3</button>${qdd('mp3', '', 'bulk')}</span>${vid ? `<span class="split"><button class="btn" data-act="bulk" data-a="video">⬇ ${t('video')}</button>${qdd('video', '', 'bulk')}</span>` : ''}
+      <button class="btn nsb" data-act="bulk" data-a="mp3" data-ns="1">⏩ MP3 ${t('nosil_dl')}</button>
       <button class="btn" data-act="bulk" data-a="transcribe">📝 ${t('transcribe')}</button><button class="btn" data-act="bulk" data-a="project">${PJADD} ${t('to_project')}</button>
       <button class="btn ghost" data-act="sel-none">✕</button></div>` : ''}
     ${typed}<div class="btns" style="margin-bottom:6px"><button class="chip ${S.selMode ? 'on' : ''}" data-act="sel-mode">☑ ${t('select')}</button>
@@ -1133,7 +1144,8 @@ function marksHTML() {
     <div class="mark ${b.end == null ? 'pt' : ''} ${b.done ? 'done' : ''}" data-b="${b.id}" ${b.end != null ? `style="--pc:${partCol(b)}"` : ''}>
       <div class="r1">${S.selMode ? `<input type="checkbox" class="sel" data-act="sel" ${S.sel.has(b.id) ? 'checked' : ''}>` : ''}
         <div class="mt"><input class="nm" dir="auto" data-edit="mark-name" value="${esc(b.name)}" placeholder="${t('untitled')}" ${b.done ? 'readonly' : ''}>
-          <button class="mtime" data-act="seek" data-t="${b.start}">${b.end != null ? rng(b.start, b.end) : `<bdi>${fmt(b.start)}</bdi>`}</button></div>
+          <div class="mtrow"><button class="mtime" data-act="seek" data-t="${b.start}">${b.end != null ? rng(b.start, b.end) : `<bdi>${fmt(b.start)}</bdi>`}</button>
+          ${b.end != null ? `<span class="mdur">⏱ <bdi>${dur(b.end - b.start)}</bdi></span>` : ''}</div></div>
         ${b.done ? `<span class="chip okc">✓ ${t('done_lock')}</span>` : ''}</div>
       ${S.lockAsk === b.id ? `<div class="btns lockrow"><button class="btn ${b.done ? '' : 'pri'} lockok" data-act="mark-done-ok">${b.done ? '🔓 ' + t('unlock_ok') : '✓ ' + t('lock_ok')}</button><button class="btn ghost" data-act="mark-done-no">✕</button></div>` : ''}
       ${b.end == null && !b.done ? `<button class="btn soft wide" data-act="set-end">🔴 ${t('set_end')}</button>` : ''}
@@ -1143,6 +1155,7 @@ function marksHTML() {
           : tj && ['running', 'queued'].includes(tj.status) ? `<button class="btn busy" disabled>📝 <bdi>${Math.round((tj.progress || 0) * 100)}%</bdi></button>`
           : `<button class="btn" data-act="one" data-a="transcribe">📝 ${t('transcribe')}</button>`}
         <button class="btn icon" data-act="mark-more" aria-label="${t('more_opts')}">${ICON('dots')}</button></div>
+      ${b.end != null ? nsRow(d.jobs, j => j.bookmark_id === b.id, '', vid) : ''}
       <div class="inl"></div>
       ${b.note || S.noteOpen === b.id ? `<textarea class="note" dir="auto" data-edit="mark-note" placeholder="${t('note_ph')}" ${b.done ? 'readonly' : ''}>${esc(b.note || '')}</textarea>` : ''}
     </div>`; }).join('')}`;
@@ -1759,10 +1772,10 @@ setInterval(() => { if (document.hidden) return; pollN++; if (S.jobs.some(j => j
 document.addEventListener('visibilitychange', () => { if (!document.hidden) pollJobs(); });
 
 /* ================= settings ================= */
-const silMinOpts = () => [0.5, 0.75, 1, 1.5, 2, 3].map(v => [v, t('sec_n', String(v).replace('.', LANG === 'ar' ? '٫' : '.'))]);
+const silMinOpts = () => [0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2].map(v => [v, t('sec_n', String(v).replace('.', LANG === 'ar' ? '٫' : '.'))]);
 const silSensOpts = () => [['careful', t('sens_careful')], ['normal', t('sens_normal')], ['strong', t('sens_strong')]];
 function silFields(s) {
-  return `<div class="field"><label>${t('sil_min')}</label>${segc('sil_min', s.sil_min ?? 0.5, silMinOpts(), 'data-set')}</div>
+  return `<div class="field"><label>${t('sil_min')}</label>${segc('sil_min', s.sil_min ?? 0.3, silMinOpts(), 'data-set')}</div>
     <div class="field"><label>${t('sil_sens')}</label>${segc('sil_sens', s.sil_sens || 'normal', silSensOpts(), 'data-set')}<small class="muted">${t('sens_p')}</small></div>`;
 }
 async function silSheet() {
@@ -2022,14 +2035,14 @@ const ACT = {
   bulk: async el => {
     const ids = [...S.sel];
     if (el.dataset.a === 'project') return projectSheet(ids.map(id => { const b = S.item.bookmarks.find(x => x.id === id); return { item_id: S.item.id, start: b.start, end: b.end || S.item.duration || b.start + 60, title: b.name }; }));
-    const r = await post('/api/bookmarks/action', { ids, action: el.dataset.a }); toast(t('queued_n', r.queued)); pollJobs();
+    const r = await post('/api/bookmarks/action', { ids, action: el.dataset.a, nosil: !!el.dataset.ns }); toast(t('queued_n', r.queued)); pollJobs();
   },
   qmenu: el => {
     const host = el.closest('[data-item]'), itemId = +(el.dataset.item || (host && host.dataset.item) || (S.item && S.item.id));
     const f = el.dataset.f;
     qMenu(el, itemId, f, async q => {
       const qq = f === 'mp3' ? q : q, tag = f === 'mp3' ? (q ? q + ' kbps' : t('q_orig')) : (q >= 9999 ? t('q_orig') : q + 'p');
-      const nosil = store.get('nosilDl', false);
+      const nosil = !!el.dataset.ns;
       if (el.dataset.mode === 'bulk') { const r = await post('/api/bookmarks/action', { ids: [...S.sel], action: f, q: qq, nosil }); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
       if (el.dataset.mode === 'fetch') { await post(`/api/items/${itemId}/action`, { action: 'fetch_video', q: qq }); toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs(); return; }
       if (el.dataset.ex) await post(`/api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq, nosil });
@@ -2038,7 +2051,7 @@ const ACT = {
     });
   },
   clip: async el => {
-    const nosil = store.get('nosilDl', false);
+    const nosil = !!el.dataset.ns;
     if (el.dataset.ex) { await post(`/api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f, nosil }); }
     else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); await post('/api/bookmarks/action', { ids: [bid], action: el.dataset.f, nosil }); }
     el.disabled = true; el.innerHTML = '⏳ …'; toast(t('in_tasks')); openFiles(); pollJobs();

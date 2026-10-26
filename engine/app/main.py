@@ -578,7 +578,7 @@ def get_silence(r):
     lv = silence.cached(f)
     s = db.get_settings()
     if lv:
-        sp = silence.spans(silence.levels(lv), float(r.query.get("min") or s.get("sil_min") or 0.5),
+        sp = silence.spans(silence.levels(lv), float(r.query.get("min") or s.get("sil_min") or 0.3),
                            r.query.get("sens") or s.get("sil_sens") or "normal")
         return {"spans": sp, "saved": round(sum(b - a for a, b in sp), 1)}
     for j in db.q("SELECT id, status, params, message FROM jobs WHERE kind='levels' ORDER BY id DESC LIMIT 30"):

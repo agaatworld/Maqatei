@@ -15,17 +15,18 @@ import os
 from . import db
 from . import media
 
-STEP = 0.02                       # seconds per loudness value
+STEP = 0.01                       # seconds per loudness value (a hundredth of a second)
 CACHE = db.DATA / "levels"
 WEB = os.environ.get("MAQATI_WEB") == "1"
 # how close to the background noise a moment must be to count as silence (0 = only the noise itself, 1 = speech),
-# and the margin left before and after the words
-SENS = {"careful": (0.12, 0.2), "normal": (0.2, 0.15), "strong": (0.3, 0.1)}
+# and the most silence kept around the words (half before, half after)
+SENS = {"careful": (0.12, 0.4), "normal": (0.2, 0.3), "strong": (0.3, 0.2)}
+KEEP_MIN = 0.06                   # even the shortest skipped silence leaves this much: the words never touch
 
 
 def _key(src):
     st = src.stat()
-    return hashlib.sha1(f"{src.resolve()}|{st.st_size}|{int(st.st_mtime)}".encode()).hexdigest()[:20]
+    return hashlib.sha1(f"{src.resolve()}|{st.st_size}|{int(st.st_mtime)}|{STEP}".encode()).hexdigest()[:20]
 
 
 def cached(src):
@@ -34,16 +35,16 @@ def cached(src):
 
 
 def measure(src, cancel=None, progress=None, total=None):
-    """Loudness every 20 ms (mean power), saved next to the database. Returns the saved file."""
+    """Loudness every 10 ms (mean power), saved next to the database. Returns the saved file."""
     f = cached(src)
     if f:
         return f
     CACHE.mkdir(parents=True, exist_ok=True)
     out = CACHE / (_key(src) + ".f32")
     tmp = CACHE / (out.stem + ".part.f32")
-    # power, averaged over about 20 ms, read every 20 ms (sharp: a silence keeps its real length)
+    # power, averaged over about 10 ms, read every 10 ms (sharp: a silence keeps its real length)
     media.ffmpeg(["-i", str(src), "-map", "0:a:0", "-vn", "-af",
-                  "aformat=channel_layouts=mono,aresample=16000,aeval=val(0)*val(0),lowpass=f=8:p=1,"
+                  "aformat=channel_layouts=mono,aresample=16000,aeval=val(0)*val(0),lowpass=f=16:p=1,"
                   f"aresample={int(1 / STEP)}:filter_size=1:phase_shift=0,aeval=abs(val(0))", "-c:a", "pcm_f32le", "-f", "f32le", str(tmp)],
                  cancel, total, progress)
     os.replace(tmp, out)
@@ -56,41 +57,29 @@ def levels(f):
     return [10 * math.log10(x) if x > 1e-12 else -120.0 for x in a]
 
 
-def spans(lv, min_len=0.5, sens="normal"):
-    """[(from, to)] seconds that can be skipped: silences of at least min_len, minus the margins."""
+def spans(lv, min_len=0.3, sens="normal"):
+    """[(from, to)] seconds that can be skipped: silences of at least min_len, minus what is kept around the words.
+    A long silence keeps up to the chosen margin; a short one keeps half of itself (at least KEEP_MIN), so even
+    0.1-second gaps are tightened without the end of one word touching the start of the next."""
     if len(lv) < 10:
         return []
-    k, pad = SENS.get(sens, SENS["normal"])
+    k, keep_max = SENS.get(sens, SENS["normal"])
     s = sorted(lv)
     floor, speech = s[len(s) // 20], s[len(s) * 9 // 10]
     if speech - floor < 12:                  # no clear quiet moments (music, constant noise): skip nothing
         return []
     line = floor + (speech - floor) * k
-    quiet = [x < line for x in lv]
-    # a click or a breath of up to 40 ms inside a silence does not end it
-    n = len(quiet)
-    i = 0
+    out, n, i = [], len(lv), 0
     while i < n:
-        if not quiet[i]:
+        if lv[i] < line:
             j = i
-            while j < n and not quiet[j]:
+            while j < n and lv[j] < line:
                 j += 1
-            if 0 < i and j < n and j - i <= 2:
-                for x in range(i, j):
-                    quiet[x] = True
-            i = j
-        else:
-            i += 1
-    out = []
-    i = 0
-    while i < n:
-        if quiet[i]:
-            j = i
-            while j < n and quiet[j]:
-                j += 1
-            a, b = i * STEP, j * STEP
-            if b - a >= min_len and b - a - 2 * pad > 0.08:
-                out.append((round(a + pad, 3), round(b - pad, 3)))
+            ln = (j - i) * STEP
+            keep = min(keep_max, max(KEEP_MIN, ln / 2))
+            if ln >= min_len - 1e-6 and ln - keep >= 0.03:
+                a = i * STEP + keep / 2
+                out.append((round(a, 3), round(a + ln - keep, 3)))
             i = j
         else:
             i += 1
