@@ -425,7 +425,8 @@ def run_clip(job, p, ev, progress):
         dst = clean
     if p.get("nosil"):                         # the part without its silences (the cut with them is not kept)
         try:
-            dst = no_silence(dst, ev, lambda x, m=None: progress(0.5 + x / 2, m), wd, replace=True, q=p.get("q"))
+            dst = no_silence(dst, ev, lambda x, m=None: progress(0.5 + x / 2, m), wd, replace=True, q=p.get("q"),
+                             min_len=p.get("sil_min"), sens=p.get("sil_sens"))
         except SilenceNone:                    # nothing to take out: the part is already continuous
             new = media.unique(dst.with_name(f"{dst.stem} ({M('nosil_name')}){dst.suffix}"))
             dst.rename(new)
@@ -438,14 +439,14 @@ class SilenceNone(RuntimeError):
     pass
 
 
-def no_silence(src, ev, progress, workdir, replace=False, q=None):
+def no_silence(src, ev, progress, workdir, replace=False, q=None, min_len=None, sens=None):
     """A copy of src (audio or video) without its silences, using the chosen length and care.
     replace: the copy takes the original's place (a part made with "no silences")."""
     s = db.get_settings()
     total, kind = media.probe(src)
     progress(0, M("sil_measuring"))
     f = silence.measure(src, ev, lambda x: progress(x * 0.3, M("sil_measuring")), total)
-    sp = silence.spans(silence.levels(f), float(s.get("sil_min") or 0.3), s.get("sil_sens") or "normal")
+    sp = silence.spans(silence.levels(f), float(min_len or s.get("sil_min") or 0.3), sens or s.get("sil_sens") or "normal")
     if not sp:
         raise SilenceNone(M("sil_none"))
     video = kind == "video"
@@ -471,7 +472,7 @@ def run_levels(job, p, ev, progress):
 
 
 def run_nosil(job, p, ev, progress):
-    dst = no_silence(lib(p["path"]), ev, progress, work(job["id"], fresh=True))
+    dst = no_silence(lib(p["path"]), ev, progress, work(job["id"], fresh=True), min_len=p.get("sil_min"), sens=p.get("sil_sens"))
     shutil.rmtree(db.WORK / f"job{job['id']}", ignore_errors=True)
     return rel(dst)
 

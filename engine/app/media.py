@@ -321,7 +321,8 @@ def blocked_message(reason=""):
 
 def ytdlp_base(alt=0):
     cmd = ([YTDLP_EXE] if YTDLP_EXE else [PYTHON, YTDLP] if YTDLP else [sys.executable, "-m", "yt_dlp"]) + ["--encoding", "utf-8", "--no-playlist", "--newline", "--no-colors",
-           "--no-mtime", "--retries", "10", "--fragment-retries", "10"]
+           "--no-mtime", "--retries", "10", "--fragment-retries", "10",
+           "--http-chunk-size", "10M"]          # asked in 10 MB pieces: YouTube does not slow these down
     if FFMPEG:
         cmd += ["--ffmpeg-location", FFMPEG]
     if JS_RUNTIME == "node":

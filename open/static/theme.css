@@ -494,3 +494,4 @@ html.isdark .nsrow.mu .nsl{color:#B197FC}
 .sugg .sgl{color:var(--gold);font-weight:700}
 .sugg .sgn{flex:1;min-width:140px;background:var(--bg2);padding:6px 10px;border-radius:10px}
 .sugg .sgok{min-height:38px}
+.chip.nsopt{font-weight:700;border-color:var(--acc);color:var(--acc)}

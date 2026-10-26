@@ -455,6 +455,9 @@ class MainActivity : AppCompatActivity() {
         }
         @JavascriptInterface fun checkUpdate() { ui.post { Updater.check(this@MainActivity, quiet = false) } }
         @JavascriptInterface fun askBackground() { ui.post { this@MainActivity.askBackground() } }
+        /** Is Maqati allowed to keep working at full speed when it is not on screen? */
+        @JavascriptInterface fun backgroundAllowed(): Boolean =
+            (getSystemService(POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
         @JavascriptInterface fun print(title: String?) {
             ui.post {
                 val pm = getSystemService(PRINT_SERVICE) as PrintManager

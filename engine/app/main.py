@@ -421,7 +421,7 @@ def clip_file(r):
         extra = {"excerpt_id": p["excerpt_id"]} if p.get("excerpt_id") else {}
         jobs.add("clip", i["id"], M("t_mp3_part" if p.get("fmt", "mp3") == "mp3" else "t_video_part", l=label, t=i["title"]),
                  j["bookmark_id"], fmt=p.get("fmt", "mp3"), start=a, end=e, name=p.get("name"), **extra, **({"q": p["q"]} if p.get("q") else {}),
-                 **({"nosil": 1} if p.get("nosil") else {}), **({"demusic": 1} if p.get("demusic") else {}))
+                 **({"nosil": 1, **sil_opts(p)} if p.get("nosil") else {}), **({"demusic": 1} if p.get("demusic") else {}))
         return {"ok": True}
     if act == "transcribe":
         label = p.get("name") or media.short_time(p.get("start") or 0)
@@ -433,6 +433,21 @@ def clip_file(r):
         db.run("UPDATE jobs SET result=NULL WHERE id=?", (j["id"],))
         return {"ok": True}
     raise HTTPError(400, "unknown action")
+
+
+def sil_opts(b):
+    """The silence length and care chosen for this one download (otherwise the settings are used)."""
+    out = {}
+    if num(b.get("sil_min")) is not None and 0.05 <= num(b.get("sil_min")) <= 10:
+        out["sil_min"] = num(b.get("sil_min"))
+    if b.get("sil_sens") in ("careful", "normal", "strong"):
+        out["sil_sens"] = b["sil_sens"]
+    return out
+
+
+def sil_tag(b):
+    o = sil_opts(b)
+    return f" ({o['sil_min']:g}s)" if "sil_min" in o else ""
 
 
 @route("POST", "/api/bookmarks/action")
@@ -449,8 +464,8 @@ def marks_action(r):
         if action in ("mp3", "video"):
             q = int(r.body.get("q") or 0)
             tag = (f" · {q}p" if action == "video" else f" · {q}k") if q else ""
-            ns = {"nosil": 1} if r.body.get("nosil") else {}
-            tag += f" · {M('nosil_name')}" if ns else ""
+            ns = dict(nosil=1, **sil_opts(r.body)) if r.body.get("nosil") else {}
+            tag += f" · {M('nosil_name')}{sil_tag(r.body)}" if ns else ""
             if r.body.get("demusic"):
                 ns["demusic"] = 1
                 tag += f" · {M('music_name')}"
@@ -552,10 +567,10 @@ def clip_excerpt(r, xid):
     i = db.one("SELECT * FROM items WHERE id=?", (x["item_id"],))
     fmt, q = r.body.get("fmt", "mp3"), int(r.body.get("q") or 0)
     label = x["title"] or media.short_time(x["start"])
-    ns = {"nosil": 1} if r.body.get("nosil") else {}
+    ns = dict(nosil=1, **sil_opts(r.body)) if r.body.get("nosil") else {}
     if r.body.get("demusic"):
         ns["demusic"] = 1
-    tag = (f" · {M('nosil_name')}" if ns.get("nosil") else "") + (f" · {M('music_name')}" if ns.get("demusic") else "")
+    tag = (f" · {M('nosil_name')}{sil_tag(r.body)}" if ns.get("nosil") else "") + (f" · {M('music_name')}" if ns.get("demusic") else "")
     jid = jobs.add("clip", i["id"], M("t_mp3_part" if fmt == "mp3" else "t_video_part", l=label, t=i["title"]) + tag, None,
                    fmt=fmt, start=x["start"], end=x["end"], name=x["title"], excerpt_id=x["id"], **({"q": q} if q else {}), **ns)
     return {"ok": True, "id": jid}
@@ -609,7 +624,7 @@ def make_nosil(r):
     item = _item_of_file(path, r.body.get("item_id"))
     if not item:
         raise HTTPError(404, "lesson not found")
-    return {"ok": True, "id": jobs.add("nosil", item["id"], M("t_nosil", t=f.stem), path=path)}
+    return {"ok": True, "id": jobs.add("nosil", item["id"], M("t_nosil", t=f.stem) + sil_tag(r.body), path=path, **sil_opts(r.body))}
 
 
 @route("POST", "/api/suggest-name")

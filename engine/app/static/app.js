@@ -195,7 +195,10 @@ const TX = {
   map_part: ['Make it a part', 'اجعله مقطعًا'], map_all_parts: ['All as parts', 'الكل مقاطع'],
   map_all_q: ['Make {0} parts, one for each chapter shown?', 'إنشاء {0} مقطعًا، مقطع لكل باب ظاهر؟'], map_parts_done: ['{0} parts added', 'أضيف {0} مقطعًا'],
   map_none: ['Nothing of this kind in this lesson.', 'لا يوجد شيء من هذا النوع في الدرس.'],
-  sec_n: ['{0} s', '{0} ث'], sugg: ['Suggested:', 'اسم مقترح:'], sugg_ok: ['Use it', 'اعتمده'], sugg_done: ['Name added — you can still change it', 'وُضع الاسم — ويمكنك تعديله'],
+  sec_n: ['{0} s', '{0} ث'], bg_slow: ['Downloads slow down when you leave the app: allow Maqati to work in the background', 'التنزيل يبطؤ حين تخرج من التطبيق: اسمح لمقاطع بالعمل في الخلفية'],
+  bg_allow: ['Allow', 'اسمح'], ns_opts: ['Silence length for downloads', 'طول السكتة للتنزيل'], ns_go: ['Make the file', 'اصنع الملف'],
+  ns_p: ['Silences at least this long are taken out of the file. A small gap is always kept between words, so no word is cut.',
+    'تُحذف من الملف كل سكتة بهذا الطول أو أطول. ويبقى دائمًا فاصل صغير بين الكلمات فلا تُقطع كلمة.'], sugg: ['Suggested:', 'اسم مقترح:'], sugg_ok: ['Use it', 'اعتمده'], sugg_done: ['Name added — you can still change it', 'وُضع الاسم — ويمكنك تعديله'],
   sugg_wait: ['Suggesting a name from what is said…', 'يقترح اسمًا مما قيل في المقطع…'], share: ['Share', 'مشاركة'], share_moment: ['Link that starts at', 'رابط يبدأ من'], share_link: ['The link', 'الرابط'],
   share_text: ['As text', 'كنص'], share_saved: ['This device cannot share files: it was saved to Downloads instead', 'هذا الجهاز لا يشارك الملفات: حُفظ في التنزيلات بدلًا من ذلك'], nomusic_dl: ['Without music', 'بدون موسيقى'], nomusic_item: ['Remove the music (whole lesson)', 'حذف الموسيقى من الدرس كله'],
   nomusic_queued: ['Removing the music — the file appears in Files and is saved by itself', 'يُحذف ما في الملف من موسيقى — يظهر في الملفات ويُحفظ وحده'], saved_phone: ['Saving to Downloads…', 'يُحفظ في التنزيلات…'], nosil_make: ['Copy without silences', 'نسخة بدون سكتات'], nosil_dl: ['Without silences', 'بدون سكتات'],
@@ -938,7 +941,10 @@ function clipBtns(jobs, match, attrs, vid, only, mode) {
   return only === 'video' ? one('video') : only === 'mp3' ? one('mp3') : one('mp3') + (vid ? one('video') : '');
 }
 /* the same part without its silences, or without its music: their own clear rows and their own files (the normal ones stay) */
-const nsRow = (jobs, match, attrs, vid) => `<div class="nsrow"><span class="nsl">⏩ ${t('nosil_dl')}</span>${clipBtns(jobs, match, attrs, vid, null, 'ns')}</div>`
+const nsMin = () => store.get('nsMin', S.set.sil_min ?? 0.3), nsSens = () => store.get('nsSens', S.set.sil_sens || 'normal');
+const nsOpts = () => ({ sil_min: nsMin(), sil_sens: nsSens() });
+const nsChip = () => `<button type="button" class="chip nsopt" data-act="ns-opts" title="${t('ns_opts')}">⏱ <bdi>${String(nsMin()).replace('.', LANG === 'ar' ? '٫' : '.')}</bdi>${LANG === 'ar' ? 'ث' : 's'} · ${t('sens_' + nsSens())}</button>`;
+const nsRow = (jobs, match, attrs, vid) => `<div class="nsrow"><span class="nsl">⏩ ${t('nosil_dl')}</span>${nsChip()}${clipBtns(jobs, match, attrs, vid, null, 'ns')}</div>`
   + (S.music ? `<div class="nsrow mu"><span class="nsl">🎵 ${t('nomusic_dl')}</span>${clipBtns(jobs, match, attrs, vid, null, 'mu')}</div>` : '');
 function exCard(x, jobs, showItem) {
   const open = S.exOpen === x.id;
@@ -1799,7 +1805,17 @@ function renderJobs() {
 /* a download button means "put it on my phone": the file is saved by itself as soon as its task is done
    (remembered across closing the app), so nobody has to go to Tasks and press save again */
 const AUTO = new Set(store.get('autosave', []));
-function wantSave(r) { for (const id of (r && (r.ids || (r.id != null ? [r.id] : []))) || []) AUTO.add(id); store.set('autosave', [...AUTO]); return r; }
+/* downloads slow down out of sight when the phone's battery saver restricts the app: ask once a day, with one tap */
+function bgCheck() {
+  try {
+    if (!window.MaqatiApp || !MaqatiApp.backgroundAllowed || MaqatiApp.backgroundAllowed()) return;
+    if (Date.now() - store.get('bgAsk', 0) < 86400000) return;
+    store.set('bgAsk', Date.now());
+    toast('🔋 ' + t('bg_slow'), { label: t('bg_allow'), fn: () => MaqatiApp.askBackground() }, 9000);
+  } catch (e) {}
+}
+function wantSave(r) {
+  bgCheck(); for (const id of (r && (r.ids || (r.id != null ? [r.id] : []))) || []) AUTO.add(id); store.set('autosave', [...AUTO]); return r; }
 function autoSaves(js) {
   if (!AUTO.size) return;
   const have = new Set(js.map(j => j.id)); let n = 0;
@@ -1849,6 +1865,18 @@ const silSensOpts = () => [['careful', t('sens_careful')], ['normal', t('sens_no
 function silFields(s) {
   return `<div class="field"><label>${t('sil_min')}</label>${segc('sil_min', s.sil_min ?? 0.3, silMinOpts(), 'data-set')}</div>
     <div class="field"><label>${t('sil_sens')}</label>${segc('sil_sens', s.sil_sens || 'normal', silSensOpts(), 'data-set')}<small class="muted">${t('sens_p')}</small></div>`;
+}
+/* how long a silence must be to be taken out of a downloaded file (each download can choose; the last choice is kept) */
+async function nsSheet(go) {
+  let m = nsMin(), sv = nsSens();
+  const r = await sheet(`⏩ ${t('nosil_dl')}`, `<p class="muted small">${t('ns_p')}</p>
+      <div class="field"><label>${t('sil_min')}</label>${segc('nsm', m, silMinOpts())}</div>
+      <div class="field"><label>${t('sil_sens')}</label>${segc('nss', sv, silSensOpts())}<small class="muted">${t('sens_p')}</small></div>`,
+    `<button class="btn pri big" value="ok">${go ? '⬇ ' + t('ns_go') : '✓ ' + t('done_edit')}</button>`,
+    d => wireSegc(d, (k, v) => { if (k === 'nsm') m = +v; else sv = v; }));
+  if (r !== 'ok') return false;
+  store.set('nsMin', m); store.set('nsSens', sv);
+  return true;
 }
 async function silSheet() {
   await sheet(`⏩ ${t('sil_skip')}`, `<p class="muted small">${t('sil_p')}</p>${silFields(S.set)}`, `<button class="btn pri big" value="x">✓ ${t('done_edit')}</button>`);
@@ -2075,7 +2103,8 @@ const ACT = {
   },
   demusic: async el => { try { wantSave(await post('/api/demusic', { path: el.dataset.path, item_id: S.item && S.item.id })); toast(t('nomusic_queued')); pollJobs(); } catch (e) { toast('⚠️ ' + e.message); } },
   'demusic-item': async () => { try { wantSave(await post('/api/demusic', { item_id: S.item.id })); toast(t('nomusic_queued')); pollJobs(); } catch (e) { toast('⚠️ ' + e.message); } },
-  nosil: async el => { wantSave(await post('/api/nosil', { path: el.dataset.path, item_id: S.item && S.item.id })); toast(t('nosil_queued')); pollJobs(); },
+  nosil: async el => { if (!(await nsSheet(true))) return; wantSave(await post('/api/nosil', { path: el.dataset.path, item_id: S.item && S.item.id, ...nsOpts() })); toast(t('nosil_queued')); pollJobs(); },
+  'ns-opts': async () => { await nsSheet(false); if (S.item) renderSections({ soft: true }); },
   'rate-next': () => { const rs = [0.75, 1, 1.25, 1.5, 2], r = rs[(rs.indexOf(PL.rateV) + 1) % rs.length]; PL.rate(r); store.set('rate', r); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
   'skip-next': () => { const ss = [5, 10, 15, 30]; store.set('skip', ss[(ss.indexOf(skipS()) + 1) % ss.length]); ui(); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
   'fine-toggle': () => { store.set('fineOpen', !store.get('fineOpen', false)); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
@@ -2117,7 +2146,7 @@ const ACT = {
   bulk: async el => {
     const ids = [...S.sel];
     if (el.dataset.a === 'project') return projectSheet(ids.map(id => { const b = S.item.bookmarks.find(x => x.id === id); return { item_id: S.item.id, start: b.start, end: b.end || S.item.duration || b.start + 60, title: b.name }; }));
-    const r = await post('/api/bookmarks/action', { ids, action: el.dataset.a, nosil: !!el.dataset.ns }); if (el.dataset.a !== 'transcribe') wantSave(r); toast(t('queued_n', r.queued)); pollJobs();
+    const r = await post('/api/bookmarks/action', { ids, action: el.dataset.a, nosil: !!el.dataset.ns, ...(el.dataset.ns ? nsOpts() : {}) }); if (el.dataset.a !== 'transcribe') wantSave(r); toast(t('queued_n', r.queued)); pollJobs();
   },
   qmenu: el => {
     const host = el.closest('[data-item]'), itemId = +(el.dataset.item || (host && host.dataset.item) || (S.item && S.item.id));
@@ -2125,17 +2154,17 @@ const ACT = {
     qMenu(el, itemId, f, async q => {
       const qq = f === 'mp3' ? q : q, tag = f === 'mp3' ? (q ? q + ' kbps' : t('q_orig')) : (q >= 9999 ? t('q_orig') : q + 'p');
       const nosil = !!el.dataset.ns, demusic = !!el.dataset.mu;
-      if (el.dataset.mode === 'bulk') { const r = wantSave(await post('/api/bookmarks/action', { ids: [...S.sel], action: f, q: qq, nosil, demusic })); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
+      if (el.dataset.mode === 'bulk') { const r = wantSave(await post('/api/bookmarks/action', { ids: [...S.sel], action: f, q: qq, nosil, demusic, ...(nosil ? nsOpts() : {}) })); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
       if (el.dataset.mode === 'fetch') { wantSave(await post(`/api/items/${itemId}/action`, { action: 'fetch_video', q: qq })); toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs(); return; }
-      if (el.dataset.ex) wantSave(await post(`/api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq, nosil, demusic }));
-      else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('/api/bookmarks/action', { ids: [bid], action: f, q: qq, nosil, demusic })); }
+      if (el.dataset.ex) wantSave(await post(`/api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq, nosil, demusic, ...(nosil ? nsOpts() : {}) }));
+      else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('/api/bookmarks/action', { ids: [bid], action: f, q: qq, nosil, demusic, ...(nosil ? nsOpts() : {}) })); }
       toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs();
     });
   },
   clip: async el => {
     const nosil = !!el.dataset.ns, demusic = !!el.dataset.mu;
-    if (el.dataset.ex) { wantSave(await post(`/api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f, nosil, demusic })); }
-    else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('/api/bookmarks/action', { ids: [bid], action: el.dataset.f, nosil, demusic })); }
+    if (el.dataset.ex) { wantSave(await post(`/api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f, nosil, demusic, ...(nosil ? nsOpts() : {}) })); }
+    else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('/api/bookmarks/action', { ids: [bid], action: el.dataset.f, nosil, demusic, ...(nosil ? nsOpts() : {}) })); }
     el.disabled = true; el.innerHTML = '⏳ …'; toast(t('in_tasks')); openFiles(); pollJobs();
   },
   'job-op': async el => { await post(`/api/jobs/${el.dataset.j}/${el.dataset.op}`); pollJobs(); },
