@@ -1,6 +1,7 @@
 """A stand-in for the Groq transcription API, for tests. It answers like Groq (verbose_json with
 segments and words) and records what the app sent: prompt, file type, audio length."""
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -25,7 +26,29 @@ class H(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        body = json.dumps(LOG).encode() if self.path == "/log" else b'{"data":[]}'
+        body = json.dumps(LOG).encode() if self.path == "/log" else \
+            b'{"data":[{"id":"whisper-large-v3"},{"id":"llama-3.3-70b-versatile"}]}' if self.path.endswith("/models") else b'{"data":[]}'
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def chat(self, raw):
+        """Lesson map requests: a chapter every 6 lines, a question chapter where someone asks."""
+        req = json.loads(raw)
+        text = req["messages"][-1]["content"]
+        LOG.append({"chat": req["model"], "chars": len(text)})
+        lines = [(int(m[1]), m[2]) for m in re.finditer(r"^\[(\d+)\] (.*)$", text, re.M)]
+        ch = []
+        for k, (n, t) in enumerate(lines):
+            if "يقول السائل" in t or n % 10 == 3:
+                ch.append({"l": n, "kind": "q", "title": "ما حكم من صلى الفجر بعد طلوع الشمس ناسيًا، هل يقضيها؟"})
+            elif n % 10 == 7:
+                ch.append({"l": n, "kind": "story", "title": "قصة الرجل الذي قتل مئة نفس"})
+            elif k % 6 == 0:
+                ch.append({"l": n, "kind": "topic", "title": f"موضوع {n}"})
+        body = json.dumps({"choices": [{"message": {"content": "```json\n" + json.dumps({"chapters": ch}, ensure_ascii=False) + "\n```"}}]}).encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
@@ -35,6 +58,8 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         n = int(self.headers["Content-Length"])
         raw = self.rfile.read(n)
+        if self.path.endswith("/chat/completions"):
+            return self.chat(raw)
         msg = BytesParser(policy=default).parsebytes(
             b"Content-Type: " + self.headers["Content-Type"].encode() + b"\r\n\r\n" + raw)
         fields, file_type, audio = {}, None, b""

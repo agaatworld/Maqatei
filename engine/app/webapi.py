@@ -20,7 +20,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 if "requests" not in sys.modules:              # the real one needs sockets; the page makes web calls instead
     sys.modules["requests"] = types.SimpleNamespace(RequestException=Exception)
 
-from . import db, jobs, main, media, mirrors, transcribe
+from . import db, jobs, main, media, mirrors, smart, transcribe
 
 MEMO = {}                 # answers the page gave back: key -> result
 _DONE = {}                # finished downloads of the running task
@@ -209,6 +209,8 @@ def _setup():
     media.blocked_message = lambda reason="": YT_WEB_FAIL + (f"\n({reason.strip().splitlines()[-1][:120]})" if reason and reason.strip() else "")
     transcribe.requests = _Requests
     transcribe._sleep = lambda *a, **kw: None     # the page itself waits before asking the service again
+    smart.requests = _Requests                    # the lesson map asks Groq through the page too
+    smart._sleep = lambda *a, **kw: None
     real_probe = media.probe
 
     def probe(path):
@@ -316,7 +318,7 @@ def dispatch(method, url, body=b"", dur=None, kind=None):
 
 
 # ---------- tasks ----------
-SUPPORTED = ("clip", "convert", "transcribe", "project", "info", "fetch")
+SUPPORTED = ("clip", "convert", "transcribe", "project", "info", "fetch", "levels", "nosil", "map")
 
 
 def next_job():

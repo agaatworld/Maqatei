@@ -136,6 +136,9 @@ const TX = {
   tr_choose: ['Choose a transcript', 'اختر التفريغ'], tr_showing: ['Showing', 'المعروض'], tr_search_ph: ['Search in the transcript…', 'ابحث في التفريغ…'], tr_hits: ['{0} matches · tap one to jump there', '{0} نتيجة · اضغط أيّها لينتقل التشغيل إليها'], tr_nohit: ['No match', 'لا نتيجة'],
   pin: ['Pin', 'تثبيت'], pinned: ['Pinned', 'مثبّت'], working_on: ['Working on now', 'قيد العمل الآن'],
   continue: ['Continue listening', 'أكمل الاستماع'],
+  listened: ['Listened', 'تم الاستماع'], mark_listened: ['Mark as listened', 'علّمه: تم الاستماع'], unmark_listened: ['Not listened yet', 'لم أسمعه بعد'],
+  ls_all: ['All', 'الكل'], ls_new: ['Not started', 'لم يُسمع'], ls_mid: ['In progress', 'قيد الاستماع'], ls_done: ['Listened', 'تم الاستماع'],
+  pct_heard: ['{0}% heard', 'سُمع {0}٪'],
   more_opts: ['More', 'المزيد'], my_works: ['My works', 'أعمالي'], my_works_s: ['Cuts & transcripts', 'المقاطع والتفريغات'],
   works_all_p: ['Every cut and transcript from all your lessons. Choose a folder or a type; tap one to play, save, rename, re-cut or add it to a project.', 'كل مقاطعك وتفريغاتك من كل الدروس. اختر مجلدًا أو نوعًا، واضغط أيًّا منها للتشغيل أو الحفظ أو إعادة التسمية أو القص أو إضافته لمشروع.'],
   imp_found: ['Your {0} lessons from the old version ({1}) are still in Termux', 'دروسك القديمة ({0} درسًا) من النسخة {1} ما زالت في Termux'],
@@ -174,6 +177,26 @@ const TX = {
   ck_add: ['Add cookies.txt', 'أضف ملف cookies.txt'], ck_del: ['Remove', 'احذفه'],
   ck_p: ['Only needed if YouTube says “confirm you’re not a bot”. Fastest fix: install the free 1.1.1.1 (WARP) app, turn it on, and press Retry. If it still happens: on the phone install the Quetta browser, add the extension “Get cookies.txt LOCALLY” from the Chrome Web Store, open youtube.com signed in, export cookies.txt and add it here.', 'يُحتاج فقط إذا قال يوتيوب «أكّد أنك لست روبوتًا». الحل الأسرع: ثبّت تطبيق 1.1.1.1 (WARP) المجاني وشغّله ثم اضغط «أعد المحاولة». إن استمرّ: ثبّت متصفح Quetta على الهاتف، وأضف إليه إضافة «Get cookies.txt LOCALLY» من متجر Chrome، وافتح youtube.com وأنت مسجّل الدخول، وصدّر ملف cookies.txt وأضفه هنا.'],
   key_tip: ['Tip: add your free Groq key in Settings to transcribe', 'تلميح: أضف مفتاح Groq المجاني من الإعدادات للتفريغ'],
+  sil_skip: ['Skip silences', 'تخطي السكتات'], sil_saved: ['saves {0}', 'يوفّر {0}'], sil_wait: ['measuring…', 'يقيس السكتات…'],
+  sil_none_here: ['no silences of this length', 'لا سكتات بهذا الطول'],
+  sil_need_dl: ['Download the audio or video first: silences are measured in the file itself.', 'نزّل الصوت أو المرئي أولًا: السكتات تقاس في الملف نفسه.'],
+  sil_p: ['Jumps over silences while listening, and makes files without them. A margin is always left around the words, so no word is ever cut.',
+    'يقفز فوق السكتات أثناء الاستماع، ويصنع ملفات بدونها. يُترك دائمًا هامش حول الكلام فلا تُقطع أي كلمة.'],
+  sil_min: ['Shortest silence to skip', 'أقصر سكتة تُتخطّى'], sil_sens: ['What counts as silence', 'ما يُعدّ سكتة'],
+  sens_careful: ['Careful', 'حذِر'], sens_normal: ['Balanced', 'متوسط'], sens_strong: ['Strong', 'قوي'],
+  sens_p: ['Careful: only clear silence. Strong: also very quiet moments like breaths. In all three the words stay whole.',
+    'حذِر: الصمت الواضح فقط. قوي: يشمل الأنفاس واللحظات الهادئة جدًا. وفي الثلاثة تبقى الكلمات كاملة.'],
+  sec_map: ['Lesson map', 'خريطة الدرس'], sec_map_s: ['Map', 'الخريطة'],
+  map_p: ['The app reads the transcript and divides the lesson into detailed chapters: every topic, every story, and every question with its answer. Tap a title to jump to it.',
+    'يقرأ التطبيق التفريغ ويقسّم الدرس إلى أبواب مفصّلة: كل موضوع، وكل قصة، وكل سؤال مع جوابه. اضغط أي عنوان لتنتقل إليه.'],
+  map_need_tr: ['Transcribe the lesson first; the map is made from its transcript.', 'فرّغ الدرس أولًا؛ الخريطة تُصنع من تفريغه.'],
+  map_make: ['Make the lesson map', 'اصنع خريطة الدرس'], map_redo: ['Make it again', 'أعد صنعها'], map_busy: ['Making the lesson map…', 'تُصنع خريطة الدرس…'],
+  map_all: ['All', 'الكل'], map_q: ['Questions', 'الأسئلة'], map_story: ['Stories', 'القصص'],
+  map_part: ['Make it a part', 'اجعله مقطعًا'], map_all_parts: ['All as parts', 'الكل مقاطع'],
+  map_all_q: ['Make {0} parts, one for each chapter shown?', 'إنشاء {0} مقطعًا، مقطع لكل باب ظاهر؟'], map_parts_done: ['{0} parts added', 'أضيف {0} مقطعًا'],
+  map_none: ['Nothing of this kind in this lesson.', 'لا يوجد شيء من هذا النوع في الدرس.'],
+  sec_n: ['{0} s', '{0} ث'], nosil_make: ['Copy without silences', 'نسخة بدون سكتات'], nosil_dl: ['Without silences', 'بدون سكتات'],
+  nosil_queued: ['Making a copy without silences — it appears in Files', 'تُصنع نسخة بدون سكتات — تظهر في الملفات'],
 };
 let LANG = 'ar';
 const t = (k, ...a) => { let s = (TX[k] || [k, k])[LANG === 'ar' ? 1 : 0]; a.forEach((v, i) => s = s.replace('{' + i + '}', v)); return s; };
@@ -352,13 +375,15 @@ const PL = {
     }
     this.unload();
     this.item = item; S.pending = null;
-    const resume = at != null ? at : store.get('pos.' + item.id, 0);
+    let resume = at != null ? at : store.get('pos.' + item.id, null) ?? (item.listen_pos || 0);
+    if (at == null && item.duration && resume > item.duration - 5) resume = 0;        // finished last time: from the start
     if (item.file) {
       this.makeEl(this.isVideoFile(item) && !this.audioOnly ? 'video' : 'audio', resume, autoplay || at != null);
     } else if (ytId(item.url)) {
       this.kind = 'yt';
     }
     this.session();
+    setTimeout(silLoad, 0);
   },
   makeEl(kind, at, autoplay) {
     const old = this.el;
@@ -367,8 +392,8 @@ const PL = {
     el.playbackRate = this.rateV;
     el.addEventListener('loadedmetadata', () => { if (at) el.currentTime = at; if (autoplay) el.play().catch(() => {}); }, { once: true });
     el.addEventListener('play', () => { ui(); if (window.MaqatiApp && MaqatiApp.playing) MaqatiApp.playing(true); });
-    el.addEventListener('pause', () => { ui(); if (window.MaqatiApp && MaqatiApp.playing) MaqatiApp.playing(false); });
-    el.addEventListener('ended', () => { if (window.MaqatiApp && MaqatiApp.playing) MaqatiApp.playing(false); });
+    el.addEventListener('pause', () => { ui(); listenSave(true); if (window.MaqatiApp && MaqatiApp.playing) MaqatiApp.playing(false); });
+    el.addEventListener('ended', () => { listenSave(true); if (window.MaqatiApp && MaqatiApp.playing) MaqatiApp.playing(false); });
     /* tap = play/pause; double-tap on the right/left side = forward/back (like YouTube) */
     let tapT = null, tapAt = 0;
     el.addEventListener('click', e => {
@@ -487,16 +512,21 @@ function plMarks() {
   const src = S.item && S.item.id === it.id ? S.item : it;
   return (src.bookmarks || []);
 }
+/* each part gets its own clear colour (neighbours never share one), the same colour as its card in the list */
+const PCOL = ['#E8590C', '#1C7ED6', '#D6336C', '#2B8A3E', '#7048E8', '#F59F00', '#0B7285', '#A61E4D'];
+const partCol = b => { const it = S.item && S.item.bookmarks.includes(b) ? S.item : PL.item; const ps = ((it && it.bookmarks) || []).filter(x => x.end != null); const i = ps.indexOf(b); return PCOL[(i < 0 ? b.id : i) % PCOL.length]; };
 function drawMarks(sk) {
   const d = PL.dur(), box = $('.mks', sk); if (!box) return;
-  const ms = plMarks(), sig = d.toFixed(0) + '|' + ms.map(b => b.id + ':' + b.start + ':' + b.end).join(',') + '|' + (S.pending ?? '');
+  const live = S.pending != null ? [S.pending, Math.max(S.pending, PL.time())] : null;
+  const ms = plMarks(), sig = d.toFixed(0) + '|' + ms.map(b => b.id + ':' + b.start + ':' + b.end).join(',') + '|' + (live ? live.map(x => x.toFixed(1)).join('-') : '');
   if (box.dataset.sig === sig) return; box.dataset.sig = sig;
   if (!d) { box.innerHTML = ''; return; }
   const p = x => Math.min(100, Math.max(0, x / d * 100)).toFixed(3) + '%';
+  const ps = ms.filter(b => b.end != null);
   box.innerHTML = ms.map(b => b.end != null
-    ? `<i class="rg" style="left:${p(b.start)};width:calc(${p(b.end)} - ${p(b.start)})"></i><i class="pt" data-t="${b.start}" style="left:${p(b.start)}"></i>`
+    ? `<i class="rg" style="--pc:${PCOL[ps.indexOf(b) % PCOL.length]};left:${p(b.start)};width:max(3px,calc(${p(b.end)} - ${p(b.start)}))"></i>`
     : `<i class="pt bmk" data-t="${b.start}" style="left:${p(b.start)}"></i>`).join('')
-    + (S.pending != null ? `<i class="pt live" style="left:${p(S.pending)}"></i>` : '');
+    + (live ? `<i class="rg live" style="left:${p(live[0])};width:max(3px,calc(${p(live[1])} - ${p(live[0])}))"></i><i class="pt live" style="left:${p(live[0])}"></i>` : '');
 }
 function bindSeek(sk) {
   if (!sk || sk.dataset.bound) return; sk.dataset.bound = 1;
@@ -547,6 +577,49 @@ function ui() {
 }
 let seeking = null, lastPP = null;
 function paintPP() { const p = PL.playing(); $$('#dockPP,#miniPP').forEach(b => { if (b.dataset.p !== String(p)) { b.dataset.p = p; b.innerHTML = p ? IC.pause : IC.play; } }); }
+let lsLast = 0;
+function listenSave(force) {
+  const it = PL.item; if (!it || !/^\d+$/.test(String(it.id)) || !PL.ready()) return;
+  const x = PL.time(), d = PL.dur(); if (!d || x < 1) return;
+  if (!force && Date.now() - lsLast < 10000) return;
+  lsLast = Date.now();
+  const done = x >= d - Math.max(20, d * 0.03), now = Date.now() / 1000;
+  const body = { listen_pos: done ? 0 : x };
+  for (const li of [S.items.find(i => i.id === it.id), S.item && S.item.id === it.id ? S.item : null]) {
+    if (!li) continue;
+    if (done && !li.listened) { body.listened = true; li.listened = now; }
+    li.listen_pos = body.listen_pos; li.listen_at = now;
+  }
+  if (done) store.set('pos.' + it.id, 0);
+  patch('api/items/' + it.id, body).catch(() => {});
+  if (body.listened && S.item && S.item.id === it.id) { renderMeta(); toast('✓ ' + t('listened')); }
+}
+/* jumping over silences while listening: the engine measures each file once; the page only jumps over the spans */
+const SIL = { key: '', path: null, spans: [], saved: 0, state: '' };
+function silLabel() { return SIL.state === 'wait' ? t('sil_wait') : SIL.state === 'on' ? (SIL.spans.length ? t('sil_saved', fmt(SIL.saved)) : t('sil_none_here')) : SIL.state === 'err' ? '⚠️' : ''; }
+function silTools() { const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); }
+async function silLoad(force) {
+  const it = PL.item;
+  if (!S.set.sil_skip || !it || !it.file) { SIL.key = ''; SIL.spans = []; SIL.state = ''; return; }
+  const key = [it.file, S.set.sil_min, S.set.sil_sens].join('|');
+  if (!force && SIL.key === key) return;
+  SIL.key = key; SIL.path = it.file;
+  const iid = /^\d+$/.test(String(it.id)) ? it.id : (it.parent || '');
+  let r; try { r = await api(`api/silence?path=${encodeURIComponent(it.file)}&item=${iid}`); } catch (e) { r = { error: e.message }; }
+  if (SIL.key !== key) return;
+  if (r.pending) { SIL.state = 'wait'; SIL.spans = []; setTimeout(() => { if (SIL.key === key) silLoad(true); }, 2000); }
+  else if (r.error) { SIL.state = 'err'; SIL.spans = []; toast('⚠️ ' + r.error); }
+  else { SIL.state = 'on'; SIL.spans = r.spans || []; SIL.saved = r.saved || 0; }
+  silTools();
+}
+setInterval(() => {                 // 40 times a second: a half-second silence is never missed
+  const el = PL.el;
+  if (!S.set.sil_skip || !SIL.spans.length || !el || el.paused || seeking || !PL.item || PL.item.file !== SIL.path) return;
+  const x = el.currentTime, sp = SIL.spans;
+  let lo = 0, hi = sp.length - 1, i = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (sp[m][0] <= x) { i = m; lo = m + 1; } else hi = m - 1; }
+  if (i >= 0 && x < sp[i][1] - 0.05) el.currentTime = sp[i][1];
+}, 25);
 /* smooth: the bar follows the sound every frame; text and heavier work 4 times a second */
 (function frame() {
   if (PL.item) {
@@ -568,7 +641,7 @@ setInterval(() => {
   paintPP(); $$('.sk').forEach(drawMarks);
   $$('[data-act=mstart]').forEach(ms => { ms.classList.toggle('live', S.pending != null); $('span', ms).textContent = S.pending != null ? '+' + fmt(Math.max(0, x - S.pending)) : t('start_btn'); });
   if ('mediaSession' in navigator && PL.el && d) { try { navigator.mediaSession.setPositionState({ duration: d, position: Math.min(x, d), playbackRate: PL.rateV }); } catch (e) {} }
-  followTranscript(x);
+  followTranscript(x); mapFollow(x); if (PL.playing()) listenSave(false);
 }, 250);
 function playerToolsHTML() {
   const it = PL.item; if (!it || !S.item || it.id !== S.item.id) return '';
@@ -577,12 +650,22 @@ function playerToolsHTML() {
     <button class="chip" data-act="skip-next" aria-label="${t('skip_by')}"><span class="noico icw">${IC.fwd.replace('<svg', '<svg class="ic"')}</span> <bdi>${skipS()}${LANG === 'ar' ? 'ث' : 's'}</bdi></button>
     <button class="chip ${fine ? 'on' : ''}" data-act="fine-toggle">±0.1</button>
     ${vid ? `<button class="chip" data-act="audio-only" aria-label="${t('audio_only')}">${PL.audioOnly ? '🎬' : '🎧'}</button>` : ''}
-    ${vid && !PL.audioOnly ? `<button class="chip" data-act="fs" aria-label="${t('fullscreen')}">⛶</button>` : ''}</div>
+    ${vid && !PL.audioOnly ? `<button class="chip" data-act="fs" aria-label="${t('fullscreen')}">⛶</button>` : ''}
+    <button class="chip silc ${S.set.sil_skip ? 'on' : ''}" data-act="sil-toggle">⏩ ${t('sil_skip')}${S.set.sil_skip ? ` <small>${silLabel()}</small>` : ''}</button>
+    ${S.set.sil_skip ? `<button class="chip" data-act="sil-adjust" aria-label="${t('sil_min')}">${ICON('sliders')}</button>` : ''}</div>
     ${fine ? `<div class="fine" dir="ltr"><button class="chip" data-act="fine" data-d="-1">−1</button><button class="chip" data-act="fine" data-d="-0.1">−0.1</button>
       <span class="chip ptime" id="ptime">${fmtP(PL.time())}</span><button class="chip" data-act="fine" data-d="0.1">+0.1</button><button class="chip" data-act="fine" data-d="1">+1</button></div>` : ''}`;
 }
 
 /* ================= library ================= */
+/* listening status of a lesson: where you stopped (kept by the engine for every device) and ✓ when finished */
+function listenOf(i) {
+  const d = i.duration || 0, pos = Math.max(i.listen_pos || 0, store.get('pos.' + i.id, 0) || 0);
+  if (i.listened) return { done: true };
+  if (!d || pos < 15) return null;
+  return { pct: Math.min(99, Math.round(pos / d * 100)), left: Math.max(0, d - pos), pos };
+}
+const lsState = i => i.listened ? 'done' : listenOf(i) ? 'mid' : 'new';
 const itemIcon = i => i.kind === 'youtube' ? '▶️' : i.media === 'video' ? '🎬' : '🎧';
 function itemRow(i) {
   const th = i.thumb ? `style="background-image:url('${esc(i.thumb)}')"` : '';
@@ -591,8 +674,9 @@ function itemRow(i) {
     <div class="tt"><b dir="auto">${esc(nice(i.title))}</b>
     <small>${i.duration ? `<span>⏱ <bdi>${fmt(i.duration)}</bdi></span>` : ''}${i.bookmarks ? `<span>✂️ ${i.bookmarks}</span>` : ''}
     ${i.trs ? `<span class="okc">📝 ${t('has_tr')}</span>` : ''}${i.excerpts ? `<span>📌 ${i.excerpts}</span>` : ''}${i.notes ? `<span>💡 ${i.notes}</span>` : ''}
+    ${(() => { const l = listenOf(i); return !l ? '' : l.done ? `<span class="lsn done">✓ ${t('listened')}</span>` : `<span class="lsn">🎧 ${t('left', fmt(l.left))}</span>`; })()}
     ${!i.dir ? `<span><span class="spin"></span> ${t('reading')}</span>` : dl ? `<span class="dlc">⬇ ${Math.round(i.dl_progress * 100)}٪</span>` : (!i.file && i.url ? `<span class="warnc">🔗 ${t('not_downloaded')}</span>` : '')}</small>
-    ${dl ? `<div class="bar thin"><i style="width:${Math.round(i.dl_progress * 100)}%"></i></div>` : ''}</div></a>`;
+    ${dl ? `<div class="bar thin"><i style="width:${Math.round(i.dl_progress * 100)}%"></i></div>` : (() => { const l = listenOf(i); return l && !l.done ? `<div class="lsb" title="${t('pct_heard', l.pct)}"><i style="width:${l.pct}%"></i></div>` : ''; })()}</div></a>`;
 }
 function folderCard(id, name, icon, color, n) {
   if (store.get('libView', 'grid') === 'list') return `<a class="li frow2" href="#/lib/f/${id}" style="--fc:${esc(color || 'var(--acc)')}"><div class="th fi">${esc(icon)}</div><div class="tt"><b dir="auto">${esc(name)}</b><small>${t('items_n', n)}</small></div><span class="chev">‹</span></a>`;
@@ -614,12 +698,15 @@ function reminderHTML() {
 }
 function heroCard() {
   const pinned = S.items.filter(i => i.pinned).sort((a, b) => b.pinned - a.pinned)[0];
-  const it = pinned || S.items.find(i => i.id === store.get('last', null)) || S.items[0];
+  const last = S.items.find(i => i.id === store.get('last', null));
+  const mid = S.items.filter(i => lsState(i) === 'mid').sort((a, b) => (b.listen_at || 0) - (a.listen_at || 0))[0];
+  const it = pinned || (last && lsState(last) !== 'done' ? last : mid || last) || S.items[0];       // a finished lesson gives way to one not finished
+  S.heroId = it && it.id;
   if (!it) return '';
-  const pos = store.get('pos.' + it.id, 0), d = it.duration || 0, left = d && pos ? Math.max(0, d - pos) : 0;
+  const l = listenOf(it), pos = l && !l.done ? l.pos : 0, d = it.duration || 0, left = d && pos ? Math.max(0, d - pos) : 0;
   const folder = S.folders.find(f => f.id === it.folder_id);
   return `<a class="hero" href="#/item/${it.id}">
-    <div class="k"><span>${ICON(pinned ? 'pin' : 'headphones')} ${t(pinned ? 'working_on' : 'continue')}</span><span>${left ? t('left', fmt(left)) : d ? fmt(d) : ''}</span></div>
+    <div class="k"><span>${ICON(pinned ? 'pin' : 'headphones')} ${t(pinned ? 'working_on' : 'continue')}</span><span>${l && l.done ? '✓ ' + t('listened') : left ? t('left', fmt(left)) : d ? fmt(d) : ''}</span></div>
     <div class="r"><div><b dir="auto">${esc(nice(it.title))}</b><small>${folder ? `<span dir="auto">${esc(folder.name)}</span> · ` : ''}${d ? fmt(d) : ''}</small></div>
       <button class="go" data-act="play-at" data-item="${it.id}" data-t="${pos || 0}" aria-label="${t('play')}">${ICON('play')}</button></div>
     ${d ? `<div class="pb"><i style="width:${Math.min(100, Math.round(pos / d * 100))}%"></i></div>` : ''}</a>`;
@@ -676,6 +763,9 @@ async function vHome() {
     <div class="hmain">
       <form class="hsearch" id="hs" role="search"><input id="hq" dir="auto" placeholder="${t('home_search_ph')}" enterkeyhint="search" autocomplete="off" aria-label="${t('search')}"><button class="btn pri" aria-label="${t('search')}">${ICON('search')}</button></form>
       ${heroCard() || `<button class="hero first" data-act="add"><div class="r"><div><b>${t('first_lesson')}</b><small>${t('first_lesson_p')}</small></div><span class="go">${ICON('plus')}</span></div></button>`}
+      ${(() => { const hero = S.heroId;     // set by heroCard() just above
+        const mid = S.items.filter(i => i.id !== hero && lsState(i) === 'mid').sort((a, b) => (b.listen_at || 0) - (a.listen_at || 0)).slice(0, 4);
+        return mid.length ? `<div class="sectitle">${ICON('headphones')} ${t('continue')}</div><div class="list">${mid.map(itemRow).join('')}</div>` : ''; })()}
       <div class="sectitle">${ICON('clock')} ${t('now_running')}<a class="more" href="#/tasks">${t('tasks')}</a></div><div id="homeJobs"></div>
       <div class="sectitle">${ICON('box')} ${t('recent_works')}<a class="more" href="#/works">${t('see_all')}</a></div>
       ${works.length ? `<div class="card pad">${works.map(workRow).join('')}</div>` : `<p class="muted small hint">${t('works_empty')}</p>`}
@@ -714,12 +804,16 @@ async function vFolder(fid, tab, mine) {
     let list = S.items.filter(i => fid === 'all' ? true : fid === 'none' ? !i.folder_id : String(i.folder_id) === fid);
     const sort = store.get('sort', 'new'), filter = (S.ffilter || '').trim().toLowerCase();
     if (filter) list = list.filter(i => (i.title || '').toLowerCase().includes(filter));
+    const lf = store.get('lsf', 'all'), cnt = k => list.filter(i => lsState(i) === k).length;
+    const lsBar = segc('lsf', lf, [['all', t('ls_all')], ['new', `${t('ls_new')} ${cnt('new')}`], ['mid', `🎧 ${t('ls_mid')} ${cnt('mid')}`], ['done', `✓ ${t('ls_done')} ${cnt('done')}`]], 'data-lsf');
+    if (lf !== 'all') list = list.filter(i => lsState(i) === lf);
     if (sort === 'name') list = [...list].sort((a, b) => nice(a.title).localeCompare(nice(b.title), LANG));
     $('#fbody').innerHTML = `<div class="toolbar"><input class="input" style="flex:1;min-width:140px" id="ffilter" placeholder="${t('filter')}" value="${esc(S.ffilter || '')}">
-      ${segc('sort', sort, [['new', t('newest')], ['name', t('by_name')]], 'data-sort')}</div>
+      ${segc('sort', sort, [['new', t('newest')], ['name', t('by_name')]], 'data-sort')}</div><div class="toolbar lsbar">${lsBar}</div>
       <div class="list">${list.map(itemRow).join('') || `<div class="empty"><div class="big">🗂️</div><p>${t('empty_folder')}</p></div>`}</div>`;
     $('#ffilter').oninput = e => { S.ffilter = e.target.value; clearTimeout(vFolder.t); vFolder.t = setTimeout(() => vFolder(fid, tab).then(() => { const i = $('#ffilter'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }), 300); };
     $$('[data-sort] button').forEach(b => b.onclick = () => { store.set('sort', b.dataset.v); vFolder(fid, tab); });
+    $$('[data-lsf] button').forEach(b => b.onclick = () => { store.set('lsf', b.dataset.v); vFolder(fid, tab); });
     return;
   }
   const c = await api(`api/folders/${fid}/contents`);
@@ -775,8 +869,11 @@ async function qMenu(el, itemId, fmtk, pick) {
   const opts = fmtk === 'mp3'
     ? q.audio.map(k => [k, k ? `${k} kbps${k <= 64 ? ' · ' + t('q_small') : ''}` : `⭐ ${t('q_orig')} · ${t('q_best_a')}`])
     : [[9999, `⭐ ${t('q_orig')}${q.top ? ` · ${q.top}p` : ''}`], ...q.video.filter(h => h !== q.top).map(h => [h, `${h}p${tag(h)}`])];
+  const ns = el.dataset.mode !== 'fetch';
   box.innerHTML = `<div class="qh">${fmtk === 'mp3' ? '🎵 MP3' : '🎬 ' + t('video')} · ${t('quality')}</div>` +
+    (ns ? `<label class="qns"><input type="checkbox" id="qNs" ${store.get('nosilDl', false) ? 'checked' : ''}> ⏩ ${t('nosil_dl')}</label>` : '') +
     opts.map(([v, l], i) => `<button type="button" data-q="${v}" class="${i === 0 ? 'top' : ''}" dir="auto">${l}</button>`).join('');
+  const nsBox = $('#qNs', box); if (nsBox) nsBox.onchange = () => { store.set('nosilDl', nsBox.checked); $$('[data-act=clip]').forEach(b => b.classList.toggle('ns', nsBox.checked)); };
   box.onclick = e => { const b = e.target.closest('[data-q]'); if (!b) return; closeQ(); el.classList.remove('qopen'); pick(+b.dataset.q); };
   placeQ(box, el);
 }
@@ -786,7 +883,7 @@ function clipBtns(jobs, match, attrs, vid, only) {
   const one = fmtk => {
     const j = [...jobs].reverse().find(x => x.kind === 'clip' && (x.params.fmt || 'mp3') === fmtk && match(x));
     const label = fmtk === 'mp3' ? 'MP3' : t('video');
-    if (!j) return `<span class="split"><button class="btn" data-act="clip" data-f="${fmtk}" ${attrs}>⬇ ${label}</button>${qdd(fmtk, attrs)}</span>`;
+    if (!j) return `<span class="split"><button class="btn ${store.get('nosilDl', false) ? 'ns' : ''}" data-act="clip" data-f="${fmtk}" ${attrs}>⬇ ${label}</button>${qdd(fmtk, attrs)}</span>`;
     if (j.status === 'done' && j.result) return `<span class="ready split"><button class="btn ok" data-act="play-file" data-path="${esc(j.result)}">▶ ${label}${j.taken ? ` <small class="tk">✓ ${dur(j.taken)}</small>` : ''}</button><a class="btn ok" href="${mediaURL(j.result)}?dl=1">⬇</a>${qdd(fmtk, attrs)}</span>`;
     if (j.status === 'error') return `<button class="btn warn" data-act="job-retry" data-j="${j.id}">⚠️ ${label} · ${t('retry_short')}</button>`;
     return `<button class="btn busy" disabled>⏳ ${label} <bdi>${Math.round((j.progress || 0) * 100)}%</bdi>${j.eta ? ` <small class="tk">~${dur(j.eta)}</small>` : ''}</button>`;
@@ -920,6 +1017,7 @@ function renderMeta() {
   const d = S.item, f = S.folders.find(x => x.id === d.folder_id);
   $('#itMeta').innerHTML = `<button class="chip acc" data-act="move-item">${esc((f && f.icon) || '📁')} <span dir="auto">${esc(f ? f.name : t('unsorted'))}</span></button>
     ${d.duration ? `<span class="mtx"><bdi>${fmt(d.duration)}</bdi></span>` : ''}
+    <button class="chip lsc ${d.listened ? 'on' : ''}" data-act="listened-toggle">${d.listened ? '✓ ' + t('listened') : '○ ' + t('mark_listened')}</button>
     ${d.pinned ? `<span class="mtx gold">📍 ${t('pinned')}</span>` : ''}${d.projects.length ? `<span class="mtx">💼 ${d.projects.length}</span>` : ''}`;
 }
 function renderBanner() {
@@ -946,7 +1044,7 @@ async function refreshItem(opts = {}) {
   $('#itTitle').textContent = nice(d.title);
   renderMeta(); renderBanner(); renderSections(opts); PL.place();
 }
-const TAB_OF = { marks: 'marks', tr: 'tr', ex: 'notes', notes: 'notes', files: 'files' };
+const TAB_OF = { marks: 'marks', map: 'map', tr: 'tr', ex: 'notes', notes: 'notes', files: 'files' };
 function secHTML(key, icon, title, n, body) {
   const on = TAB_OF[key] === store.get('itab', 'marks');
   return `<section class="sec ${on ? 'show' : ''}" data-sec="${key}"><div class="sectop"><span class="ico">${icon}</span><b class="minw">${title}</b>${n ? `<span class="n">${n}</span>` : ''}</div><div class="secbody" id="sb-${key}">${body}</div></section>`;
@@ -964,24 +1062,56 @@ function renderSections(opts = {}) {
   const trOld = opts.keepTr && $('#sb-tr') ? $('#sb-tr').innerHTML : null;
   const y = window.scrollY;
   if (opts.soft && $('#itabs')) {                   // live update: same page, only what changed inside each tab
-    const parts = { marks: marksHTML(), ex: exListHTML(), notes: notesHTML(), files: filesHTML() };
+    const parts = { marks: marksHTML(), map: mapHTML(), ex: exListHTML(), notes: notesHTML(), files: filesHTML() };
     for (const [k, html] of Object.entries(parts)) { const el = $('#sb-' + k); if (el && el.innerHTML !== html) el.innerHTML = html; }
-    const cnt2 = { marks: d.bookmarks.length, tr: d.transcripts.length, notes: d.notes.length + d.excerpts.length, files: d.files.length };
+    const cnt2 = { marks: d.bookmarks.length, map: d.map ? d.map.chapters.length : 0, tr: d.transcripts.length, notes: d.notes.length + d.excerpts.length, files: d.files.length };
     $$('#itabs button').forEach(b => { const n = cnt2[b.dataset.k], sm = $('small', b); if (sm) sm.textContent = n || ''; else if (n) b.insertAdjacentHTML('beforeend', `<small>${n}</small>`); });
     if (!opts.keepTr && S.set.show_transcript !== false) loadTranscript();
     return;
   }
-  const tab = store.get('itab', 'marks'), cnt = { marks: d.bookmarks.length, tr: d.transcripts.length, notes: d.notes.length + d.excerpts.length, files: d.files.length };
-  host.innerHTML = `<div class="itabs" id="itabs" role="tablist">${[['marks', 'sec_marks_s'], ...(S.set.show_transcript !== false ? [['tr', 'sec_tr_s']] : []), ['notes', 'sec_notes_s'], ['files', 'sec_files_s']].map(([k, l]) =>
+  let tab = store.get('itab', 'marks');
+  if (S.set.show_transcript === false && (tab === 'tr' || tab === 'map')) tab = 'marks';
+  const cnt = { marks: d.bookmarks.length, map: d.map ? d.map.chapters.length : 0, tr: d.transcripts.length, notes: d.notes.length + d.excerpts.length, files: d.files.length };
+  host.innerHTML = `<div class="itabs" id="itabs" role="tablist">${[['marks', 'sec_marks_s'], ...(S.set.show_transcript !== false ? [['tr', 'sec_tr_s'], ['map', 'sec_map_s']] : []), ['notes', 'sec_notes_s'], ['files', 'sec_files_s']].map(([k, l]) =>
     `<button role="tab" data-act="itab" data-k="${k}" class="${tab === k ? 'on' : ''}">${t(l)}${cnt[k] ? `<small>${cnt[k]}</small>` : ''}</button>`).join('')}</div>` + [
     secHTML('marks', '✂️', t('sec_marks'), d.bookmarks.length, marksHTML()),
     S.set.show_transcript !== false ? secHTML('tr', '📝', t('sec_tr'), d.transcripts.length, '') : '',
+    S.set.show_transcript !== false ? secHTML('map', '🧭', t('sec_map'), cnt.map, mapHTML()) : '',
     secHTML('ex', '📌', t('sec_ex'), d.excerpts.length, exListHTML()),
     secHTML('notes', '💡', t('sec_notes'), d.notes.length, notesHTML()),
     secHTML('files', '📁', t('sec_files'), d.files.length, filesHTML()),
   ].join('');
   if (S.set.show_transcript !== false) { if (trOld != null) $('#sb-tr').innerHTML = trOld; else loadTranscript(); }
   window.scrollTo(0, y);
+}
+
+/* ---------- lesson map: detailed chapters, stories and questions, each a tap away ---------- */
+const MAPK = { q: '❓', story: '📖', topic: '📌' };
+function mapHTML() {
+  const d = S.item, m = d.map;
+  const job = [...d.jobs].reverse().find(j => j.kind === 'map' && ['running', 'queued', 'paused', 'error'].includes(j.status));
+  const pct = job ? Math.round((job.progress || 0) * 100) : 0;
+  const busy = job && job.status !== 'error' ? `<div class="banner"><div class="grow minw"><b>🧭 ${t('map_busy')} <bdi>${pct}%</bdi></b><small dir="auto">${esc(job.message || '')}</small><div class="bar"><i style="width:${pct}%"></i></div></div></div>` : '';
+  const err = job && job.status === 'error' ? `<div class="banner warn">⚠️ <span class="grow minw" dir="auto">${esc(job.message)}</span><button class="btn warn" data-act="job-retry" data-j="${job.id}">${t('retry')}</button></div>` : '';
+  if (!m) return busy + err + (busy ? '' : `<p class="muted">${t(d.transcripts.length ? 'map_p' : 'map_need_tr')}</p>` + (d.transcripts.length
+    ? `<button class="btn pri big wide" data-act="map-make">🧭 ${t('map_make')}</button>` : `<button class="btn pri big" data-act="item-action" data-a="transcribe">📝 ${t('tr_full')}</button>`));
+  const f = S.mapF || 'all', ch = m.chapters, n = k => ch.filter(c => c.kind === k).length;
+  const list = ch.map((c, i) => ({ ...c, i })).filter(c => f === 'all' || c.kind === f);
+  const tab = (k, l, c) => `<button type="button" data-act="map-f" data-v="${k}" class="${f === k ? 'on' : ''}">${l}${c != null ? ` <small>${c}</small>` : ''}</button>`;
+  return busy + err + `<div class="mapbar"><div class="segc">${tab('all', t('map_all'), ch.length)}${n('q') ? tab('q', '❓ ' + t('map_q'), n('q')) : ''}${n('story') ? tab('story', '📖 ' + t('map_story'), n('story')) : ''}</div>
+      <div class="grow"></div><button class="btn" data-act="map-parts">✂️ ${t('map_all_parts')}</button><button class="btn ghost" data-act="map-make" aria-label="${t('map_redo')}" title="${t('map_redo')}">↻</button></div>
+    <div class="maplist" id="maplist">${list.length ? list.map(c => `<div class="chap k-${c.kind}" data-ci="${c.i}">
+      <button class="ct" data-act="seek" data-t="${c.t}"><span class="ck">${MAPK[c.kind] || '📌'}</span><span class="cx" dir="auto">${esc(c.title)}</span></button>
+      <div class="cr"><button class="chip when" data-act="seek" data-t="${c.t}">▶ ${rng(c.t, c.end)}</button><span class="muted small">${dur(c.end - c.t)}</span><div class="grow"></div>
+      <button class="ibtn" data-act="map-part" data-ci="${c.i}" aria-label="${t('map_part')}" title="${t('map_part')}">✂️</button></div></div>`).join('') : `<p class="muted">${t('map_none')}</p>`}</div>`;
+}
+function mapFollow(x) {
+  const box = $('#maplist'); if (!box || !S.item || !S.item.map || !PL.item || PL.item.id !== S.item.id) return;
+  const ch = S.item.map.chapters; let i = -1;
+  for (let k = 0; k < ch.length; k++) if (ch[k].t <= x + 0.2) i = k; else break;
+  if (box.dataset.now === String(i)) return; box.dataset.now = String(i);
+  $$('.chap.now', box).forEach(e => e.classList.remove('now'));
+  const el = box.querySelector(`.chap[data-ci="${i}"]`); if (el) el.classList.add('now');
 }
 
 /* ---------- parts & bookmarks ---------- */
@@ -1000,7 +1130,7 @@ function marksHTML() {
       ${S.selMode ? `<label class="chip"><input type="checkbox" data-act="sel-all" ${n && n === d.bookmarks.length ? 'checked' : ''}> ${t('select_all')}</label>` : ''}
       <button class="chip gold" data-act="export" data-which="clips">📕 ${t('export_book')}</button></div>
     ${d.bookmarks.map(b => { const tj = trJob(b); return `
-    <div class="mark ${b.end == null ? 'pt' : ''} ${b.done ? 'done' : ''}" data-b="${b.id}">
+    <div class="mark ${b.end == null ? 'pt' : ''} ${b.done ? 'done' : ''}" data-b="${b.id}" ${b.end != null ? `style="--pc:${partCol(b)}"` : ''}>
       <div class="r1">${S.selMode ? `<input type="checkbox" class="sel" data-act="sel" ${S.sel.has(b.id) ? 'checked' : ''}>` : ''}
         <div class="mt"><input class="nm" dir="auto" data-edit="mark-name" value="${esc(b.name)}" placeholder="${t('untitled')}" ${b.done ? 'readonly' : ''}>
           <button class="mtime" data-act="seek" data-t="${b.start}">${b.end != null ? rng(b.start, b.end) : `<bdi>${fmt(b.start)}</bdi>`}</button></div>
@@ -1120,6 +1250,7 @@ async function loadTranscript() {
   S.tr.segs = segs; S.tr.cur = -1;
   const one = key !== 'all' ? d.transcripts.find(x => String(x.id) === String(key)) : null;
   const heads = [...d.excerpts].filter(x => x.title).sort((a, b) => a.start - b.start); let hi = 0;
+  const chs = key === 'all' && d.map ? d.map.chapters : []; let ci = 0;      // the map's titles inside the full transcript
   const pick = S.pick;
   box.innerHTML = `
     ${d.transcripts.length > 1 ? `<button class="trpick" data-act="tr-choose"><span class="ico">${IC.doc}</span><span class="grow minw"><small>${t('tr_showing')} · ${d.transcripts.length + 1}</small>
@@ -1136,6 +1267,7 @@ async function loadTranscript() {
     ${S.editTr ? '' : `<div class="trq"><input class="input" id="trq" dir="auto" placeholder="${t('tr_search_ph')}" value="${esc(S.tr.q || '')}" autocomplete="off"><span class="muted small" id="trqN"></span></div>`}
     <div class="trbox ${pick ? 'picking' : ''}" id="trbox">${segs.map((s, i) => {
       let h = '';
+      while (ci < chs.length && chs[ci].t <= s.start + 0.3) { h += `<div class="trhead chap k-${chs[ci].kind}" data-act="seek" data-t="${chs[ci].t}" dir="auto">${MAPK[chs[ci].kind] || '📌'} ${esc(chs[ci].title)}</div>`; ci++; }
       while (hi < heads.length && heads[hi].start <= s.start + 0.5) { h += `<div class="trhead" data-act="seek" data-t="${heads[hi].start}">📌 ${esc(heads[hi].title)}</div>`; hi++; }
       const inPick = pick && pick.a != null && i === pick.a;
       return h + (S.editTr
@@ -1272,6 +1404,7 @@ function fileRow(o) {
       <div class="fnm"><b dir="auto">${esc(nice(o.name))}${o.locked ? ` <span class="lk">✓ ${t('done_lock')}</span>` : ''}</b>
         <small>${o.sub ? `<span dir="auto">${o.sub}</span> · ` : ''}${ext ? `<span class="chip tiny">${esc(ext)}</span> ` : ''}${o.size != null ? `<bdi>${size(o.size)}</bdi>` : ''}${o.took || ''}</small></div></div>
     <div class="fbar">${o.when || ''}<div class="grow"></div>${o.btns || ''}
+      ${media && !/بدون سكتات|no silences/.test(o.path) ? `<button class="chip nsb" data-act="nosil" data-path="${esc(o.path)}" title="${t('nosil_make')}">⏩ ${t('nosil_dl')}</button>` : ''}
       ${media ? `<button class="ibtn" data-act="play-file" data-path="${esc(o.path)}" aria-label="play">${IC.play}</button>` : (o.path && !o.noOpen ? `<a class="ibtn" href="${mediaURL(o.path)}" target="_blank" aria-label="open">${IC.doc}</a>` : '')}
       ${o.clip ? `<button class="ibtn" data-act="clip-proj" data-path="${esc(o.path)}" aria-label="project">${PJADD}</button>` : ''}
       ${o.path ? `<a class="ibtn dl" href="${mediaURL(o.path)}?dl=1" aria-label="download">${IC.dl}</a>` : ''}</div></div>`;
@@ -1626,6 +1759,16 @@ setInterval(() => { if (document.hidden) return; pollN++; if (S.jobs.some(j => j
 document.addEventListener('visibilitychange', () => { if (!document.hidden) pollJobs(); });
 
 /* ================= settings ================= */
+const silMinOpts = () => [0.5, 0.75, 1, 1.5, 2, 3].map(v => [v, t('sec_n', String(v).replace('.', LANG === 'ar' ? '٫' : '.'))]);
+const silSensOpts = () => [['careful', t('sens_careful')], ['normal', t('sens_normal')], ['strong', t('sens_strong')]];
+function silFields(s) {
+  return `<div class="field"><label>${t('sil_min')}</label>${segc('sil_min', s.sil_min ?? 0.5, silMinOpts(), 'data-set')}</div>
+    <div class="field"><label>${t('sil_sens')}</label>${segc('sil_sens', s.sil_sens || 'normal', silSensOpts(), 'data-set')}<small class="muted">${t('sens_p')}</small></div>`;
+}
+async function silSheet() {
+  await sheet(`⏩ ${t('sil_skip')}`, `<p class="muted small">${t('sil_p')}</p>${silFields(S.set)}`, `<button class="btn pri big" value="x">✓ ${t('done_edit')}</button>`);
+  SIL.key = ''; silLoad();
+}
 async function vSettings() {
   const [s, h] = await Promise.all([api('api/settings'), api('api/health')]);
   S.set = s;
@@ -1649,7 +1792,9 @@ async function vSettings() {
       <div class="field"><label>${t('f_head')}</label>${fontSeg('font_head', s.font_head || s.font_ui || 'tajawal', 'data-set')}</div>
       <div class="field"><label>${t('f_read')}</label>${fontSeg('font_read', s.font_read || 'amiri', 'data-set')}
         <p class="fprev" style="font-family:${fstack(s.font_read || 'amiri')}">الحمد لله رب العالمين، والصلاة والسلام على نبينا محمد.</p></div></div>
-    <div class="card pad"><h3>🤲 ${t('s_dhikr')}</h3><p class="muted small">${t('dhikr_p')}</p>${sg('dhikr', s.dhikr ?? 15, [[0, t('off')], [10, t('m10')], [15, t('m15')]])}${sw('reminders', t('s_rmd'))}</div>
+    <div class="card pad"><h3>⏩ ${t('sil_skip')}</h3><p class="muted small">${t('sil_p')}</p>
+      <label class="sw"><span>${t('sil_skip')}</span><input type="checkbox" data-set-bool="sil_skip" ${s.sil_skip ? 'checked' : ''}></label>${silFields(s)}</div>
+    <div class="card pad"><h3>🔔 ${t('s_dhikr')}</h3><p class="muted small">${t('dhikr_p')}</p>${sg('dhikr', s.dhikr ?? 15, [[0, t('off')], [10, t('m10')], [15, t('m15')]])}${sw('reminders', t('s_rmd'))}</div>
     <div class="card pad"><h3>📝 ${t('s_tr')}</h3>
       <div class="field"><label>${t('s_engine')}</label><select data-set-sel="engine"><option value="groq" ${s.engine === 'groq' ? 'selected' : ''}>${t('engine_groq')}</option>
         ${h.android || h.web ? '' : `<option value="local" ${s.engine === 'local' ? 'selected' : ''}>${t('engine_local')}</option>`}</select></div>
@@ -1718,6 +1863,7 @@ async function saveSet(obj) {
   await post('api/settings', obj);
   Object.assign(S.set, obj); if ('groq_key' in obj) delete S.set.groq_key;
   if ('lang' in obj) LANG = obj.lang;
+  if (Object.keys(obj).some(k => k.startsWith('sil_'))) { SIL.key = ''; silLoad(); }
   applyLook(); toast(t('saved'), null, 1200);
 }
 async function waitRestart(ver) {
@@ -1811,6 +1957,30 @@ const ACT = {
       <button class="mi" data-act="item-projects" value="x">💼 ${t('in_projects')}${S.item.projects.length ? ` (${S.item.projects.length})` : ''}</button>
       ${S.item.url ? `<a class="mi" href="${esc(S.item.url)}" target="_blank" rel="noopener">🔗 ${t('source')}</a>` : ''}</div>
       <div class="sectitle">${t('sec_tools')}</div>${toolsHTML()}`),
+  'sil-toggle': async () => {
+    if (PL.item && !PL.item.file) return toast(t('sil_need_dl'));
+    await saveSet({ sil_skip: !S.set.sil_skip }); SIL.key = ''; silTools(); silLoad();
+  },
+  'sil-adjust': () => silSheet(),
+  'listened-toggle': async () => {
+    const d = S.item, on = !d.listened; d.listened = on ? Date.now() / 1000 : null;
+    const li = S.items.find(i => i.id === d.id); if (li) li.listened = d.listened;
+    await patch('api/items/' + d.id, { listened: on }); renderMeta(); toast(on ? '✓ ' + t('listened') : t('unmark_listened'));
+  },
+  'map-make': async () => { try { await post(`api/items/${S.item.id}/action`, { action: 'map' }); toast(t('in_tasks')); pollJobs(); setTimeout(() => refreshItem({ keepTr: true }), 600); } catch (e) { toast('⚠️ ' + e.message); } },
+  'map-f': el => { S.mapF = el.dataset.v; $('#sb-map').innerHTML = mapHTML(); },
+  'map-part': async el => {
+    const c = S.item.map.chapters[+el.dataset.ci], id = S.item.id;
+    await post(`api/items/${id}/bookmarks`, { name: c.title, start: c.t, end: c.end }); toast('✂️ ' + c.title);
+    if (S.item && S.item.id === id) refreshItem({ keepTr: true });
+  },
+  'map-parts': async () => {
+    const f = S.mapF || 'all', id = S.item.id, ch = S.item.map.chapters.filter(c => f === 'all' || c.kind === f);
+    if (!ch.length || !(await ask(t('map_all_q', ch.length), '✂️ ' + t('map_all_parts')))) return;
+    for (const c of ch) await post(`api/items/${id}/bookmarks`, { name: c.title, start: c.t, end: c.end });
+    toast(t('map_parts_done', ch.length)); if (S.item && S.item.id === id) { store.set('itab', 'marks'); refreshItem(); showTab('marks'); }
+  },
+  nosil: async el => { await post('api/nosil', { path: el.dataset.path, item_id: S.item && S.item.id }); toast(t('nosil_queued')); pollJobs(); },
   'rate-next': () => { const rs = [0.75, 1, 1.25, 1.5, 2], r = rs[(rs.indexOf(PL.rateV) + 1) % rs.length]; PL.rate(r); store.set('rate', r); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
   'skip-next': () => { const ss = [5, 10, 15, 30]; store.set('skip', ss[(ss.indexOf(skipS()) + 1) % ss.length]); ui(); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
   'fine-toggle': () => { store.set('fineOpen', !store.get('fineOpen', false)); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
@@ -1859,16 +2029,18 @@ const ACT = {
     const f = el.dataset.f;
     qMenu(el, itemId, f, async q => {
       const qq = f === 'mp3' ? q : q, tag = f === 'mp3' ? (q ? q + ' kbps' : t('q_orig')) : (q >= 9999 ? t('q_orig') : q + 'p');
-      if (el.dataset.mode === 'bulk') { const r = await post('api/bookmarks/action', { ids: [...S.sel], action: f, q: qq }); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
+      const nosil = store.get('nosilDl', false);
+      if (el.dataset.mode === 'bulk') { const r = await post('api/bookmarks/action', { ids: [...S.sel], action: f, q: qq, nosil }); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
       if (el.dataset.mode === 'fetch') { await post(`api/items/${itemId}/action`, { action: 'fetch_video', q: qq }); toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs(); return; }
-      if (el.dataset.ex) await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq });
-      else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); await post('api/bookmarks/action', { ids: [bid], action: f, q: qq }); }
+      if (el.dataset.ex) await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq, nosil });
+      else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); await post('api/bookmarks/action', { ids: [bid], action: f, q: qq, nosil }); }
       toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs();
     });
   },
   clip: async el => {
-    if (el.dataset.ex) { await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f }); }
-    else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); await post('api/bookmarks/action', { ids: [bid], action: el.dataset.f }); }
+    const nosil = store.get('nosilDl', false);
+    if (el.dataset.ex) { await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f, nosil }); }
+    else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); await post('api/bookmarks/action', { ids: [bid], action: el.dataset.f, nosil }); }
     el.disabled = true; el.innerHTML = '⏳ …'; toast(t('in_tasks')); openFiles(); pollJobs();
   },
   'job-op': async el => { await post(`api/jobs/${el.dataset.j}/${el.dataset.op}`); pollJobs(); },

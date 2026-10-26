@@ -30,6 +30,14 @@ The full product brief is in `docs/REBUILD-BRIEF.md`. Read sections 4 (features 
   yt-dlp and Deno copied to `~/Maqati/.maqati/bin` on first run (so yt-dlp -U persists). Env `MAQATI_DESKTOP=1`,
   `MAQATI_YTDLP_EXE`, `MAQATI_DENO`. Uploaded to the version's GitHub release as Maqati-<v>-windows.exe / -mac-*.zip.
 
+## Silences and the lesson map (5.1)
+- `engine/app/silence.py`: loudness every 20 ms (one ffmpeg pass to an f32 file in `data/levels/`, cached per file),
+  spans relative to the file's own noise floor, margins around words. Player skips spans live (`SIL` in app.js);
+  `nosil` task / `nosil` clip param write copies via `aselect` with a search-tree expression (script file natively,
+  inline on the web). Tests in `tests/test_regression.py` ("silences").
+- `engine/app/smart.py`: lesson map via Groq chat (model picked from `/models`), numbered transcript lines, chapters
+  kinds `q` / `story` / `topic`, no summary (owner's request). Mock in `tests/mock_groq.py`.
+
 ## Design rules from the owner
 - **No eight-pointed stars or Islamic geometric motifs** anywhere (icons, patterns, backgrounds). He has refused them more than once.
 - Few buttons; one button may open a page that leads to other pages. Compact, not "large mode".

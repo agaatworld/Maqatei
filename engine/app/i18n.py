@@ -63,6 +63,18 @@ MSG = {
                    "يوتيوب يطلب من هاتفك إثبات أنه ليس روبوتًا. جرّب: شغّل تطبيق 1.1.1.1 (WARP) المجاني، أو شبكة Wi-Fi بدل بيانات الجوال، أو الإعدادات ← تحديث أداة "
                    "تنزيل يوتيوب، أو أضف ملف كوكيز يوتيوب من الإعدادات. ثم اضغط «أعد المحاولة»."),
     "not_found": ("Download finished but the file was not found.", "انتهى التنزيل ولم يُعثر على الملفّ."),
+    "t_levels": ("Find silences: {t}", "قياس السكتات: {t}"),
+    "t_nosil": ("Without silences: {t}", "بدون سكتات: {t}"),
+    "t_map": ("Lesson map: {t}", "خريطة الدرس: {t}"),
+    "sil_measuring": ("Measuring the silences…", "قياس السكتات…"),
+    "sil_writing": ("Writing the file without silences… {p}%", "كتابة الملف بدون سكتات… {p}٪"),
+    "sil_none": ("No silences of this length were found — the file is already continuous.",
+                 "لم توجد سكتات بهذا الطول — الملف متصل أصلًا."),
+    "nosil_name": ("no silences", "بدون سكتات"),
+    "map_need_tr": ("Transcribe the lesson first, then make its map.", "فرّغ الدرس أولًا ثم اصنع خريطته."),
+    "map_reading": ("Reading the lesson… part {d}/{n}", "قراءة الدرس… الجزء {d}/{n}"),
+    "map_bad_answer": ("The model's answer could not be read — press Retry.", "تعذرت قراءة جواب النموذج — اضغط «أعد المحاولة»."),
+    "map_too_big": ("The free plan refused even a small piece — try again later.", "رفضت الخطة المجانية حتى جزءًا صغيرًا — حاول لاحقًا."),
     "hosted_disabled": ("Not available on the hosted version — this is a shared server.",
                         "غير متاح على النسخة المستضافة — هذا خادم مشترك."),
 }

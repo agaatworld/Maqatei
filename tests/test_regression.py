@@ -68,7 +68,9 @@ def main():
                     "-shortest", str(video)], check=True)
     env = {**os.environ, "MAQATI_DATA": str(tmp / "data"), "MAQATI_LIBRARY": str(lib), "MAQATI_OPEN": "0",
            "MAQATI_PORT": str(APP), "MAQATI_LAN_PORT": "8787", "PYTHONPATH": str(ROOT / "engine" / "vendor"),
-           "MAQATI_GROQ_URL": f"http://127.0.0.1:{GROQ}/openai/v1/audio/transcriptions"}
+           "MAQATI_GROQ_URL": f"http://127.0.0.1:{GROQ}/openai/v1/audio/transcriptions",
+           "MAQATI_GROQ_CHAT_URL": f"http://127.0.0.1:{GROQ}/openai/v1/chat/completions",
+           "MAQATI_GROQ_MODELS_URL": f"http://127.0.0.1:{GROQ}/openai/v1/models"}
     procs = [subprocess.Popen([sys.executable, str(ROOT / "tests" / "mock_groq.py"), str(GROQ)]),
              subprocess.Popen([sys.executable, "-m", "app.main"], cwd=ROOT / "engine", env=env,
                               stdout=subprocess.DEVNULL, stderr=open(tmp / "engine.log", "w"))]
@@ -159,6 +161,39 @@ def main():
         check("Word file is a real .docx", docx[:2] == b"PK" and b"word/document.xml" in docx)
         txt = call("GET", f"/export?src=item&id={a}&which=clips&fmt=txt")
         check("TXT export", len(txt) > 10)
+
+        print("lesson map")
+        call("POST", f"/api/items/{a}/action", {"action": "map"})
+        js = wait_jobs(lambda j: j["kind"] == "map")
+        mp = call("GET", f"/api/items/{a}")["map"] or {}
+        ch = mp.get("chapters") or []
+        check("map made with ordered chapters that cover the lesson", js and js[0]["status"] == "done" and len(ch) >= 2
+              and all(ch[k]["t"] < ch[k + 1]["t"] and ch[k]["end"] == ch[k + 1]["t"] for k in range(len(ch) - 1))
+              and ch[0]["t"] <= 1 and "summary" not in mp, (js and js[0]["message"], ch[:3]))
+        check("map needs a transcript", call("POST", f"/api/items/{v}/action", {"action": "map"}, ok=False) == 400)
+
+        print("silences")
+        fa = call("GET", f"/api/items/{a}")["file"]          # the test lesson: 3.2 s of sound, then 0.8 s of silence
+        first = call("GET", "/api/silence?path=" + quote(fa))
+        wait_jobs(lambda j: j["kind"] == "levels")
+        sil = call("GET", "/api/silence?path=" + quote(fa))
+        sp = sil.get("spans") or []
+        check("silences found for listening", first.get("pending") and 20 <= len(sp) <= 24
+              and all(0.4 < b - a_ < 0.8 for a_, b in sp), (first, len(sp), sp[:3]))
+        check("a margin is kept around the words", all(abs(((a_ - 3.2) % 4)) < 0.3 for a_, b in sp), sp[:4])
+        check("longer minimum skips nothing here", call("GET", "/api/silence?min=1&path=" + quote(fa))["spans"] == [])
+        call("POST", "/api/nosil", {"path": fa})
+        call("POST", "/api/nosil", {"path": iv["file"]})
+        js = wait_jobs(lambda j: j["kind"] == "nosil")
+        ja = [j for j in js if j["item_id"] == a]
+        got = dur(lib / ja[0]["result"]) if ja and ja[0]["status"] == "done" else -1
+        check("copy without silences is shorter by exactly the skipped time", abs(got - (95 - sil["saved"])) < 0.15, (got, sil["saved"], ja and ja[0]["message"]))
+        jv = [j for j in js if j["item_id"] == v]
+        check("video with no silences says so", jv and jv[0]["status"] == "done" and not jv[0]["result"] and "سكتات" in jv[0]["message"], jv and (jv[0]["status"], jv[0]["message"]))
+        call("POST", "/api/bookmarks/action", {"ids": [ba], "action": "mp3", "nosil": True})
+        js = wait_jobs(lambda j: j["kind"] == "clip" and "بدون" in j["title"])
+        got = dur(lib / js[0]["result"]) if js and js[0]["status"] == "done" else -1
+        check("a part made without silences", js and 15 < got < 18.5 and "بدون سكتات" in js[0]["result"], (got, js and js[0]["message"]))
 
         print("convert and tasks")
         call("POST", f"/api/items/{v}/action", {"action": "convert"})

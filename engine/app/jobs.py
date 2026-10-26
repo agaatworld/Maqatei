@@ -9,11 +9,12 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from . import db, export, media, transcribe
+from . import db, export, media, silence, smart, transcribe
 from .i18n import M
 from .media import Cancelled
 
-CATEGORY = {"info": "info", "fetch": "dl", "clip": "dl", "convert": "dl", "project": "dl", "transcribe": "tx"}
+CATEGORY = {"info": "info", "fetch": "dl", "clip": "dl", "convert": "dl", "project": "dl", "transcribe": "tx",
+            "levels": "info", "nosil": "dl", "map": "tx"}
 CHUNK = 300          # transcribe in pieces of about 5 minutes; finished pieces are kept, so work resumes
 REACH = 25           # a piece ends at the pause nearest its 5-minute mark, looking this far either side
 OVERLAP = 4          # only when no pause was found: seconds shared by neighbours so no word is lost
@@ -216,6 +217,8 @@ def _run(job, ev):
                 _learn(key, taken / media)
     except Cancelled:
         pass                               # paused or cancelled: status already set
+    except SilenceNone as e:               # nothing to take out: an answer, not a failure
+        set_job(jid, status="done", progress=1, message=str(e)[:400], result="")
     except Exception as e:
         cur = db.one("SELECT status FROM jobs WHERE id=?", (jid,))
         if cur and cur["status"] == "running":
@@ -395,9 +398,62 @@ def run_clip(job, p, ev, progress):
     if q:                                      # the chosen quality is part of the name: 240p, 64k
         label += f" · {q}p" if fmt != "mp3" and q < 9999 else (f" · {q}k" if fmt == "mp3" else "")
     base = f"{name} ({label})" if name != "untitled" else label
-    dst = cut_part(item, start, end, fmt, d / base, ev, progress, work(job["id"], fresh=True), p.get("q"))
+    wd = work(job["id"], fresh=True)
+    dst = cut_part(item, start, end, fmt, d / base, ev, lambda x, m=None: progress(x * (0.5 if p.get("nosil") else 1), m),
+                   wd, p.get("q"))
+    if p.get("nosil"):                         # the part without its silences (the cut with them is not kept)
+        try:
+            dst = no_silence(dst, ev, lambda x, m=None: progress(0.5 + x / 2, m), wd, replace=True, q=p.get("q"))
+        except SilenceNone:
+            pass                               # nothing to take out: the part is already continuous
     shutil.rmtree(db.WORK / f"job{job['id']}", ignore_errors=True)
     return rel(dst)
+
+
+class SilenceNone(RuntimeError):
+    pass
+
+
+def no_silence(src, ev, progress, workdir, replace=False, q=None):
+    """A copy of src (audio or video) without its silences, using the chosen length and care.
+    replace: the copy takes the original's place (a part made with "no silences")."""
+    s = db.get_settings()
+    total, kind = media.probe(src)
+    progress(0, M("sil_measuring"))
+    f = silence.measure(src, ev, lambda x: progress(x * 0.3, M("sil_measuring")), total)
+    sp = silence.spans(silence.levels(f), float(s.get("sil_min") or 0.5), s.get("sil_sens") or "normal")
+    if not sp:
+        raise SilenceNone(M("sil_none"))
+    video = kind == "video"
+    ext = ".mp4" if video else ".mp3"
+    tmp = workdir / ("nosil" + ext)
+    q = int(q) if q else None
+    silence.without(src, tmp, sp, total, video, silence.fps_of(src) if video else 0, ev,
+                    lambda x: progress(0.3 + x * 0.7, M("sil_writing", p=pct(x))), abr=q if not video and q and q < 400 else None)
+    dst = media.unique(src.with_name(f"{src.stem} ({M('nosil_name')}){ext}"))
+    shutil.move(str(tmp), dst)
+    if replace:
+        src.unlink(missing_ok=True)
+    return dst
+
+
+def run_levels(job, p, ev, progress):
+    src = lib(p["path"])
+    total, _ = media.probe(src)
+    silence.measure(src, ev, lambda x: progress(x, M("sil_measuring")), total)
+    return p["path"]
+
+
+def run_nosil(job, p, ev, progress):
+    dst = no_silence(lib(p["path"]), ev, progress, work(job["id"], fresh=True))
+    shutil.rmtree(db.WORK / f"job{job['id']}", ignore_errors=True)
+    return rel(dst)
+
+
+def run_map(job, p, ev, progress):
+    smart.make_map(item_of(job), work(job["id"]), ev, progress)
+    shutil.rmtree(db.WORK / f"job{job['id']}", ignore_errors=True)
+    return ""
 
 
 def run_convert(job, p, ev, progress):
@@ -657,4 +713,4 @@ def write_files(t):
 
 
 RUNNERS = {"info": run_info, "fetch": run_fetch, "clip": run_clip, "convert": run_convert,
-           "transcribe": run_transcribe, "project": run_project}
+           "transcribe": run_transcribe, "project": run_project, "levels": run_levels, "nosil": run_nosil, "map": run_map}

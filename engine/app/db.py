@@ -45,6 +45,7 @@ CREATE TABLE IF NOT EXISTS project_clips (
 CREATE TABLE IF NOT EXISTS project_items (
   project_id INTEGER, item_id INTEGER, created REAL, PRIMARY KEY (project_id, item_id));
 CREATE TABLE IF NOT EXISTS paras (scope TEXT PRIMARY KEY, data TEXT);
+CREATE TABLE IF NOT EXISTS maps (item_id INTEGER PRIMARY KEY, data TEXT, created REAL);
 CREATE TABLE IF NOT EXISTS excerpts (
   id INTEGER PRIMARY KEY, item_id INTEGER, start REAL, end REAL, title TEXT, text TEXT, note TEXT, created REAL);
 """)
@@ -55,7 +56,8 @@ for table, col, typ in [("folders", "color", "TEXT"), ("folders", "icon", "TEXT"
                         ("jobs", "speed_key", "TEXT"), ("jobs", "taken", "REAL"),
                         ("project_clips", "section", "TEXT"), ("projects", "sections", "TEXT"),
                         ("bookmarks", "done", "INTEGER"), ("items", "pinned", "REAL"),
-                        ("items", "heights", "TEXT"), ("jobs", "hidden", "INTEGER")]:
+                        ("items", "heights", "TEXT"), ("jobs", "hidden", "INTEGER"),
+                        ("items", "listen_pos", "REAL"), ("items", "listen_at", "REAL"), ("items", "listened", "REAL")]:
     if col not in [r[1] for r in _conn.execute(f"PRAGMA table_info({table})")]:
         _conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
 _conn.commit()
@@ -88,6 +90,9 @@ DEFAULT_SETTINGS = {
     "imported_old": None,   # when the lessons of the old (Termux) version were brought over
     "lan_on": False,        # open from an iPhone or another device on the same Wi-Fi
     "lan_code": "",         # the 6-digit code that device must type once
+    "sil_skip": False,      # jump over silences while listening
+    "sil_min": 0.5,         # shortest silence that is skipped (seconds)
+    "sil_sens": "normal",   # careful | normal | strong: how close to the background noise counts as silence
 }
 
 

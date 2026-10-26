@@ -14,7 +14,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
-from . import db, export, jobs, lan, media, search, transcribe
+from . import db, export, jobs, lan, media, search, silence, smart, transcribe
 from .i18n import M, lang as ui_lang
 from .version import VERSION
 
@@ -203,6 +203,7 @@ def get_item(r, iid):
     i["notes"] = db.q("SELECT * FROM notes WHERE item_id=? ORDER BY COALESCE(time, 1e12), id", (iid,))
     i["excerpts"] = db.q("SELECT * FROM excerpts WHERE item_id=? ORDER BY start", (iid,))
     i["projects"] = [x["project_id"] for x in db.q("SELECT project_id FROM project_items WHERE item_id=?", (iid,))]
+    i["map"] = smart.get_map(iid)
     sp = jobs._speeds()
     i["jobs"] = [jobs.timing(dict(j, params=json.loads(j["params"] or "{}")), sp) for j in db.q(
         "SELECT id, kind, bookmark_id, title, status, progress, message, result, params, elapsed, run_start, media, "
@@ -222,6 +223,10 @@ def patch_item(r, iid):
         db.run("UPDATE items SET note=? WHERE id=?", (b["note"], int(iid)))
     if "pinned" in b:
         db.run("UPDATE items SET pinned=? WHERE id=?", (db.now() if b["pinned"] else None, int(iid)))
+    if b.get("listen_pos") is not None:              # where the person stopped listening (kept for every device)
+        db.run("UPDATE items SET listen_pos=?, listen_at=? WHERE id=?", (max(0.0, float(b["listen_pos"])), db.now(), int(iid)))
+    if "listened" in b:                              # finished (automatically at the end, or by hand)
+        db.run("UPDATE items SET listened=? WHERE id=?", (db.now() if b["listened"] else None, int(iid)))
     return {"ok": True}
 
 
@@ -340,6 +345,11 @@ def item_action(r, iid):
         jobs.add("convert", iid, M("t_convert", t=t))
     elif a == "transcribe":
         jobs.add("transcribe", iid, M("t_tx_all", t=t))
+    elif a == "map":
+        if not export.item_segments(iid):
+            raise HTTPError(400, M("map_need_tr"))
+        db.run("UPDATE jobs SET status='cancelled' WHERE kind='map' AND item_id=? AND status IN ('queued','error','paused')", (iid,))
+        jobs.add("map", iid, M("t_map", t=t))
     else:
         raise HTTPError(400)
     return {"ok": True}
@@ -410,7 +420,8 @@ def clip_file(r):
         label = p.get("name") or media.short_time(a)
         extra = {"excerpt_id": p["excerpt_id"]} if p.get("excerpt_id") else {}
         jobs.add("clip", i["id"], M("t_mp3_part" if p.get("fmt", "mp3") == "mp3" else "t_video_part", l=label, t=i["title"]),
-                 j["bookmark_id"], fmt=p.get("fmt", "mp3"), start=a, end=e, name=p.get("name"), **extra, **({"q": p["q"]} if p.get("q") else {}))
+                 j["bookmark_id"], fmt=p.get("fmt", "mp3"), start=a, end=e, name=p.get("name"), **extra, **({"q": p["q"]} if p.get("q") else {}),
+                 **({"nosil": 1} if p.get("nosil") else {}))
         return {"ok": True}
     if act == "transcribe":
         label = p.get("name") or media.short_time(p.get("start") or 0)
@@ -438,8 +449,10 @@ def marks_action(r):
         if action in ("mp3", "video"):
             q = int(r.body.get("q") or 0)
             tag = (f" · {q}p" if action == "video" else f" · {q}k") if q else ""
+            ns = {"nosil": 1} if r.body.get("nosil") else {}
+            tag += f" · {M('nosil_name')}" if ns else ""
             jobs.add("clip", i["id"], M("t_mp3_part" if action == "mp3" else "t_video_part", l=label, t=i["title"]) + tag,
-                     m["id"], fmt=action, **common, **({"q": q} if q else {}))
+                     m["id"], fmt=action, **common, **({"q": q} if q else {}), **ns)
         elif action == "transcribe":
             jobs.add("transcribe", i["id"], M("t_tx_part", l=label, t=i["title"]), m["id"], **common)
         n += 1
@@ -536,8 +549,61 @@ def clip_excerpt(r, xid):
     i = db.one("SELECT * FROM items WHERE id=?", (x["item_id"],))
     fmt, q = r.body.get("fmt", "mp3"), int(r.body.get("q") or 0)
     label = x["title"] or media.short_time(x["start"])
-    jobs.add("clip", i["id"], M("t_mp3_part" if fmt == "mp3" else "t_video_part", l=label, t=i["title"]), None,
-             fmt=fmt, start=x["start"], end=x["end"], name=x["title"], excerpt_id=x["id"], **({"q": q} if q else {}))
+    ns = {"nosil": 1} if r.body.get("nosil") else {}
+    jobs.add("clip", i["id"], M("t_mp3_part" if fmt == "mp3" else "t_video_part", l=label, t=i["title"]) + (f" · {M('nosil_name')}" if ns else ""), None,
+             fmt=fmt, start=x["start"], end=x["end"], name=x["title"], excerpt_id=x["id"], **({"q": q} if q else {}), **ns)
+    return {"ok": True}
+
+
+# ---------- silences: jump over them while listening, or make a copy without them ----------
+def _lib_file(path):
+    f = (db.LIBRARY / (path or "")).resolve()
+    if db.LIBRARY.resolve() not in f.parents or not f.is_file():
+        raise HTTPError(404, "file not found")
+    return f
+
+
+def _item_of_file(path, iid):
+    if iid:
+        return db.one("SELECT * FROM items WHERE id=?", (int(iid),))
+    top = (path or "").split("/")[0]
+    return db.one("SELECT * FROM items WHERE dir=?", (top,))
+
+
+@route("GET", "/api/silence")
+def get_silence(r):
+    """The silences of a file, for the player. Measured once in the background (a short task)."""
+    path = r.query.get("path") or ""
+    f = _lib_file(path)
+    lv = silence.cached(f)
+    s = db.get_settings()
+    if lv:
+        sp = silence.spans(silence.levels(lv), float(r.query.get("min") or s.get("sil_min") or 0.5),
+                           r.query.get("sens") or s.get("sil_sens") or "normal")
+        return {"spans": sp, "saved": round(sum(b - a for a, b in sp), 1)}
+    for j in db.q("SELECT id, status, params, message FROM jobs WHERE kind='levels' ORDER BY id DESC LIMIT 30"):
+        if json.loads(j["params"] or "{}").get("path") == path:
+            if j["status"] in ("queued", "running"):
+                return {"pending": True}
+            if j["status"] == "error" and not r.query.get("retry"):
+                return {"error": j["message"]}
+            break
+    item = _item_of_file(path, r.query.get("item"))
+    if not item:
+        raise HTTPError(404, "lesson not found")
+    jobs.add("levels", item["id"], M("t_levels", t=item["title"]), path=path)
+    return {"pending": True}
+
+
+@route("POST", "/api/nosil")
+def make_nosil(r):
+    """A copy of a downloaded file (whole lesson or a part) without its silences."""
+    path = r.body.get("path") or ""
+    f = _lib_file(path)
+    item = _item_of_file(path, r.body.get("item_id"))
+    if not item:
+        raise HTTPError(404, "lesson not found")
+    jobs.add("nosil", item["id"], M("t_nosil", t=f.stem), path=path)
     return {"ok": True}
 
 
