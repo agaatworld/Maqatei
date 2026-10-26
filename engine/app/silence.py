@@ -148,8 +148,35 @@ def without(src, dst, sp, total, video=False, fps=25.0, cancel=None, progress=No
             script.unlink(missing_ok=True)
     got, _ = media.probe(dst)
     if new_len and abs(got - new_len) > max(1.0, new_len * 0.02):   # never hand over a file that still has them
-        raise RuntimeError(f"silences were not removed ({got:.1f}s instead of {new_len:.1f}s)")
+        if video or WEB:
+            raise RuntimeError(f"silences were not removed ({got:.1f}s instead of {new_len:.1f}s)")
+        dst.unlink(missing_ok=True)          # this ffmpeg ignored the cut list: copy the kept sound sample by sample
+        _without_wav(src, dst, keep, total, cancel, progress, abr)
     return new_len
+
+
+def _without_wav(src, dst, keep, total, cancel=None, progress=None, abr=None):
+    """The same result without any filter: decode to WAV, copy only the kept samples, encode. Works with every
+    ffmpeg version (slower, and needs room for the decoded sound, so it is only the fallback)."""
+    import wave
+    full, cut = dst.with_name(dst.stem + ".full.wav"), dst.with_name(dst.stem + ".cut.wav")
+    try:
+        media.ffmpeg(["-i", str(src), "-map", "0:a:0", "-vn", "-ar", str(SR), "-c:a", "pcm_s16le", str(full)],
+                     cancel, total, (lambda x: progress(x * 0.5)) if progress else None)
+        with wave.open(str(full)) as r, wave.open(str(cut), "wb") as w:
+            w.setparams(r.getparams())
+            n = r.getnframes()
+            for a, b in keep:
+                i, j = min(n, int(round(a * SR))), min(n, int(round(b * SR)))
+                r.setpos(i)
+                w.writeframes(r.readframes(j - i))
+        full.unlink(missing_ok=True)
+        new_len = sum(b - a for a, b in keep)
+        media.ffmpeg(["-i", str(cut), "-map_metadata", "-1", *media.mp3_quality(abr), str(dst)], cancel, new_len,
+                     (lambda x: progress(0.5 + x * 0.5)) if progress else None)
+    finally:
+        full.unlink(missing_ok=True)
+        cut.unlink(missing_ok=True)
 
 
 def fps_of(src):

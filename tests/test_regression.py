@@ -199,7 +199,7 @@ def main():
         ja = [j for j in js if j["item_id"] == a]
         got = dur(lib / ja[0]["result"]) if ja and ja[0]["status"] == "done" else -1
         check("copy without silences is shorter by exactly the skipped time", abs(got - (95 - sil["saved"])) < 0.15,
-              (got, sil["saved"], ja and ja[0]["message"], ja and decoded(lib / ja[0]["result"]), FFV))
+              (got, sil["saved"], ja and ja[0]["message"], ja and ja[0]["result"] and decoded(lib / ja[0]["result"]), FFV))
         jv = [j for j in js if j["item_id"] == v]
         check("video with no silences says so", jv and jv[0]["status"] == "done" and not jv[0]["result"] and "سكتات" in jv[0]["message"], jv and (jv[0]["status"], jv[0]["message"]))
         call("POST", "/api/bookmarks/action", {"ids": [ba], "action": "mp3", "nosil": True})

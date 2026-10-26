@@ -335,24 +335,24 @@ def item_action(r, iid):
     i = db.one("SELECT * FROM items WHERE id=?", (iid,))
     if not i:
         raise HTTPError(404)
-    t, a = i["title"], r.body.get("action")
+    t, a, jid = i["title"], r.body.get("action"), None
     if a == "fetch_audio":
-        jobs.add("fetch", iid, M("t_dl_audio", t=t), want="audio")
+        jid = jobs.add("fetch", iid, M("t_dl_audio", t=t), want="audio")
     elif a == "fetch_video":
         q = int(r.body.get("q") or 0)
-        jobs.add("fetch", iid, M("t_dl_video", t=t) + (f" · {q}p" if q else ""), want="video", **({"height": q} if q else {}))
+        jid = jobs.add("fetch", iid, M("t_dl_video", t=t) + (f" · {q}p" if q else ""), want="video", **({"height": q} if q else {}))
     elif a == "convert":
-        jobs.add("convert", iid, M("t_convert", t=t))
+        jid = jobs.add("convert", iid, M("t_convert", t=t))
     elif a == "transcribe":
-        jobs.add("transcribe", iid, M("t_tx_all", t=t))
+        jid = jobs.add("transcribe", iid, M("t_tx_all", t=t))
     elif a == "map":
         if not export.item_segments(iid):
             raise HTTPError(400, M("map_need_tr"))
         db.run("UPDATE jobs SET status='cancelled' WHERE kind='map' AND item_id=? AND status IN ('queued','error','paused')", (iid,))
-        jobs.add("map", iid, M("t_map", t=t))
+        jid = jobs.add("map", iid, M("t_map", t=t))
     else:
         raise HTTPError(400)
-    return {"ok": True}
+    return {"ok": True, "id": jid}
 
 
 @route("POST", "/api/clipfile")
@@ -437,7 +437,7 @@ def clip_file(r):
 
 @route("POST", "/api/bookmarks/action")
 def marks_action(r):
-    n, action = 0, r.body.get("action")
+    n, action, ids = 0, r.body.get("action"), []
     for bid in r.body.get("ids") or []:
         m = db.one("SELECT * FROM bookmarks WHERE id=?", (int(bid),))
         if not m:
@@ -451,12 +451,12 @@ def marks_action(r):
             tag = (f" · {q}p" if action == "video" else f" · {q}k") if q else ""
             ns = {"nosil": 1} if r.body.get("nosil") else {}
             tag += f" · {M('nosil_name')}" if ns else ""
-            jobs.add("clip", i["id"], M("t_mp3_part" if action == "mp3" else "t_video_part", l=label, t=i["title"]) + tag,
-                     m["id"], fmt=action, **common, **({"q": q} if q else {}), **ns)
+            ids.append(jobs.add("clip", i["id"], M("t_mp3_part" if action == "mp3" else "t_video_part", l=label, t=i["title"]) + tag,
+                                m["id"], fmt=action, **common, **({"q": q} if q else {}), **ns))
         elif action == "transcribe":
-            jobs.add("transcribe", i["id"], M("t_tx_part", l=label, t=i["title"]), m["id"], **common)
+            ids.append(jobs.add("transcribe", i["id"], M("t_tx_part", l=label, t=i["title"]), m["id"], **common))
         n += 1
-    return {"queued": n}
+    return {"queued": n, "ids": ids}
 
 
 @route("GET", "/api/transcripts/(?P<tid>\\d+)")
@@ -550,9 +550,9 @@ def clip_excerpt(r, xid):
     fmt, q = r.body.get("fmt", "mp3"), int(r.body.get("q") or 0)
     label = x["title"] or media.short_time(x["start"])
     ns = {"nosil": 1} if r.body.get("nosil") else {}
-    jobs.add("clip", i["id"], M("t_mp3_part" if fmt == "mp3" else "t_video_part", l=label, t=i["title"]) + (f" · {M('nosil_name')}" if ns else ""), None,
-             fmt=fmt, start=x["start"], end=x["end"], name=x["title"], excerpt_id=x["id"], **({"q": q} if q else {}), **ns)
-    return {"ok": True}
+    jid = jobs.add("clip", i["id"], M("t_mp3_part" if fmt == "mp3" else "t_video_part", l=label, t=i["title"]) + (f" · {M('nosil_name')}" if ns else ""), None,
+                   fmt=fmt, start=x["start"], end=x["end"], name=x["title"], excerpt_id=x["id"], **({"q": q} if q else {}), **ns)
+    return {"ok": True, "id": jid}
 
 
 # ---------- silences: jump over them while listening, or make a copy without them ----------
@@ -603,8 +603,7 @@ def make_nosil(r):
     item = _item_of_file(path, r.body.get("item_id"))
     if not item:
         raise HTTPError(404, "lesson not found")
-    jobs.add("nosil", item["id"], M("t_nosil", t=f.stem), path=path)
-    return {"ok": True}
+    return {"ok": True, "id": jobs.add("nosil", item["id"], M("t_nosil", t=f.stem), path=path)}
 
 
 # ---------- what a folder holds: lessons, parts, excerpts ----------

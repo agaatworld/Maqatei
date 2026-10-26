@@ -195,7 +195,7 @@ const TX = {
   map_part: ['Make it a part', 'اجعله مقطعًا'], map_all_parts: ['All as parts', 'الكل مقاطع'],
   map_all_q: ['Make {0} parts, one for each chapter shown?', 'إنشاء {0} مقطعًا، مقطع لكل باب ظاهر؟'], map_parts_done: ['{0} parts added', 'أضيف {0} مقطعًا'],
   map_none: ['Nothing of this kind in this lesson.', 'لا يوجد شيء من هذا النوع في الدرس.'],
-  sec_n: ['{0} s', '{0} ث'], nosil_make: ['Copy without silences', 'نسخة بدون سكتات'], nosil_dl: ['Without silences', 'بدون سكتات'],
+  sec_n: ['{0} s', '{0} ث'], saved_phone: ['Saving to Downloads…', 'يُحفظ في التنزيلات…'], nosil_make: ['Copy without silences', 'نسخة بدون سكتات'], nosil_dl: ['Without silences', 'بدون سكتات'],
   nosil_queued: ['Making a copy without silences — it appears in Files', 'تُصنع نسخة بدون سكتات — تظهر في الملفات'],
 };
 let LANG = 'ar';
@@ -247,7 +247,7 @@ function toast(msg, action, ms = 3000) {
   clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, action ? 6000 : ms);
 }
 function copy(txt) { navigator.clipboard.writeText(txt).then(() => toast(t('copied')), () => toast('✗')); }
-function download(url) { const a = document.createElement('a'); a.href = url; a.download = ''; document.body.appendChild(a); a.click(); a.remove(); }
+function download(url, name) { const a = document.createElement('a'); a.href = url; a.download = name || ''; document.body.appendChild(a); a.click(); a.remove(); }
 
 /* ---------- sheets (bottom sheet on phones, dialog on bigger screens) ---------- */
 function sheet(title, body, foot, onOpen) {
@@ -1219,7 +1219,7 @@ async function partSheet(itemId, a, b) {
   const name = $('#pn').value.trim(), x = parseT($('#pa').value), y = parseT($('#pb').value);
   if (x == null || y == null || y <= x) { toast(t('bad_time')); return false; }
   const m = await post(`api/items/${itemId}/bookmarks`, { name, start: x, end: y });
-  if (r === 'mp3' || r === 'tr') { await post('api/bookmarks/action', { ids: [m.id], action: r === 'mp3' ? 'mp3' : 'transcribe' }); pollJobs(); }
+  if (r === 'mp3' || r === 'tr') { const q = await post('api/bookmarks/action', { ids: [m.id], action: r === 'mp3' ? 'mp3' : 'transcribe' }); if (r === 'mp3') wantSave(q); pollJobs(); }
   toast(r === 'save' || r === 'proj' ? t('part_saved') : t('in_tasks'));
   if (S.item && S.item.id === itemId) await refreshItem({ keepTr: true }); else if (PL.item && PL.item.id === itemId) afterMark();
   if (r === 'proj') projectSheet([{ item_id: itemId, start: x, end: y, title: name }], name);
@@ -1334,7 +1334,7 @@ async function finishPick(i) {
     d => { const x = $('#xt', d); setTimeout(() => x.focus(), 60); x.oninput = () => title = x.value; });
   if (!r || r === 'x') return;
   const x = await post(`api/items/${itemId}/excerpts`, { start, end, title: title.trim() });
-  if (r === 'mp3') { await post(`api/excerpts/${x.id}/clip`, { fmt: 'mp3' }); pollJobs(); }
+  if (r === 'mp3') { wantSave(await post(`api/excerpts/${x.id}/clip`, { fmt: 'mp3' })); pollJobs(); }
   toast(t('ex_saved'));
   if (S.item && S.item.id === itemId) await refreshItem();
   if (r === 'proj') projectSheet([{ item_id: itemId, start, end, title: title.trim() }], title.trim());
@@ -1739,10 +1739,25 @@ function renderJobs() {
       <div class="msg" dir="auto">${esc(j.message || '')}</div>${j.eta || j.taken ? `<div class="eta">⏱ ${j.status === 'done' ? tookTxt(j) : leftTxt(j)}</div>` : ''}${b ? `<div class="btns">${b}</div>` : ''}</div>`;
   }).join('') || `<div class="empty"><div class="big">${S.ttab === 'done' ? '✅' : '⏳'}</div><p>${t(S.ttab === 'done' ? 'no_done' : 'no_tasks')}</p></div>`;
 }
+/* a download button means "put it on my phone": the file is saved by itself as soon as its task is done
+   (remembered across closing the app), so nobody has to go to Tasks and press save again */
+const AUTO = new Set(store.get('autosave', []));
+function wantSave(r) { for (const id of (r && (r.ids || (r.id != null ? [r.id] : []))) || []) AUTO.add(id); store.set('autosave', [...AUTO]); return r; }
+function autoSaves(js) {
+  if (!AUTO.size) return;
+  const have = new Set(js.map(j => j.id)); let n = 0;
+  for (const j of js) if (AUTO.has(j.id) && ['done', 'error', 'cancelled'].includes(j.status)) {
+    AUTO.delete(j.id);
+    if (j.status === 'done' && j.result && /\.[a-z0-9]{2,5}$/i.test(j.result)) { setTimeout(() => download(mediaURL(j.result) + '?dl=1', j.result.split('/').pop()), 400 * n++); }
+  }
+  for (const id of [...AUTO]) if (!have.has(id)) AUTO.delete(id);
+  store.set('autosave', [...AUTO]);
+  if (n) toast('⬇ ' + t('saved_phone'));
+}
 let lastSig = '', doneSeen = null;
 async function pollJobs() {
   let js; try { js = await api('api/jobs'); } catch (e) { return; }
-  S.jobs = js; renderTabs();
+  S.jobs = js; renderTabs(); autoSaves(js);
   const done = new Set(js.filter(j => j.status === 'done').map(j => j.id));
   const fresh = doneSeen ? js.filter(j => j.status === 'done' && !doneSeen.has(j.id)) : [];
   doneSeen = done;
@@ -1993,7 +2008,7 @@ const ACT = {
     for (const c of ch) await post(`api/items/${id}/bookmarks`, { name: c.title, start: c.t, end: c.end });
     toast(t('map_parts_done', ch.length)); if (S.item && S.item.id === id) { store.set('itab', 'marks'); refreshItem(); showTab('marks'); }
   },
-  nosil: async el => { await post('api/nosil', { path: el.dataset.path, item_id: S.item && S.item.id }); toast(t('nosil_queued')); pollJobs(); },
+  nosil: async el => { wantSave(await post('api/nosil', { path: el.dataset.path, item_id: S.item && S.item.id })); toast(t('nosil_queued')); pollJobs(); },
   'rate-next': () => { const rs = [0.75, 1, 1.25, 1.5, 2], r = rs[(rs.indexOf(PL.rateV) + 1) % rs.length]; PL.rate(r); store.set('rate', r); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
   'skip-next': () => { const ss = [5, 10, 15, 30]; store.set('skip', ss[(ss.indexOf(skipS()) + 1) % ss.length]); ui(); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
   'fine-toggle': () => { store.set('fineOpen', !store.get('fineOpen', false)); const tb = $('#pl-tools'); if (tb) tb.innerHTML = playerToolsHTML(); },
@@ -2019,7 +2034,7 @@ const ACT = {
     const id = S.item.id, fid = S.item.folder_id; if (PL.item && PL.item.id === id) PL.unload();
     await del(`api/items/${id}?files=${files ? 1 : 0}`); location.hash = '#/lib/f/' + (fid || 'none');
   },
-  'item-action': async el => { await post(`api/items/${S.item.id}/action`, { action: el.dataset.a }); toast(t('in_tasks')); openFiles(); pollJobs(); },
+  'item-action': async el => { const r = await post(`api/items/${S.item.id}/action`, { action: el.dataset.a }); if (/^(fetch_|convert)/.test(el.dataset.a)) wantSave(r); toast(t('in_tasks')); openFiles(); pollJobs(); },
   seek: el => seekHere(+el.dataset.t),
   seg: el => {
     const i = +el.dataset.i;
@@ -2035,7 +2050,7 @@ const ACT = {
   bulk: async el => {
     const ids = [...S.sel];
     if (el.dataset.a === 'project') return projectSheet(ids.map(id => { const b = S.item.bookmarks.find(x => x.id === id); return { item_id: S.item.id, start: b.start, end: b.end || S.item.duration || b.start + 60, title: b.name }; }));
-    const r = await post('api/bookmarks/action', { ids, action: el.dataset.a, nosil: !!el.dataset.ns }); toast(t('queued_n', r.queued)); pollJobs();
+    const r = await post('api/bookmarks/action', { ids, action: el.dataset.a, nosil: !!el.dataset.ns }); if (el.dataset.a !== 'transcribe') wantSave(r); toast(t('queued_n', r.queued)); pollJobs();
   },
   qmenu: el => {
     const host = el.closest('[data-item]'), itemId = +(el.dataset.item || (host && host.dataset.item) || (S.item && S.item.id));
@@ -2043,17 +2058,17 @@ const ACT = {
     qMenu(el, itemId, f, async q => {
       const qq = f === 'mp3' ? q : q, tag = f === 'mp3' ? (q ? q + ' kbps' : t('q_orig')) : (q >= 9999 ? t('q_orig') : q + 'p');
       const nosil = !!el.dataset.ns;
-      if (el.dataset.mode === 'bulk') { const r = await post('api/bookmarks/action', { ids: [...S.sel], action: f, q: qq, nosil }); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
-      if (el.dataset.mode === 'fetch') { await post(`api/items/${itemId}/action`, { action: 'fetch_video', q: qq }); toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs(); return; }
-      if (el.dataset.ex) await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq, nosil });
-      else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); await post('api/bookmarks/action', { ids: [bid], action: f, q: qq, nosil }); }
+      if (el.dataset.mode === 'bulk') { const r = wantSave(await post('api/bookmarks/action', { ids: [...S.sel], action: f, q: qq, nosil })); toast(t('queued_n', r.queued) + ' · ' + tag); pollJobs(); return; }
+      if (el.dataset.mode === 'fetch') { wantSave(await post(`api/items/${itemId}/action`, { action: 'fetch_video', q: qq })); toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs(); return; }
+      if (el.dataset.ex) wantSave(await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: f, q: qq, nosil }));
+      else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('api/bookmarks/action', { ids: [bid], action: f, q: qq, nosil })); }
       toast(t('in_tasks') + ' · ' + tag); openFiles(); pollJobs();
     });
   },
   clip: async el => {
     const nosil = !!el.dataset.ns;
-    if (el.dataset.ex) { await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f, nosil }); }
-    else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); await post('api/bookmarks/action', { ids: [bid], action: el.dataset.f, nosil }); }
+    if (el.dataset.ex) { wantSave(await post(`api/excerpts/${el.dataset.ex}/clip`, { fmt: el.dataset.f, nosil })); }
+    else { const bid = +(el.dataset.b || el.closest('[data-b]').dataset.b); wantSave(await post('api/bookmarks/action', { ids: [bid], action: el.dataset.f, nosil })); }
     el.disabled = true; el.innerHTML = '⏳ …'; toast(t('in_tasks')); openFiles(); pollJobs();
   },
   'job-op': async el => { await post(`api/jobs/${el.dataset.j}/${el.dataset.op}`); pollJobs(); },
