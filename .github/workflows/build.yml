@@ -109,7 +109,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="v$VERSION"
-          if gh release view "$TAG" >/dev/null 2>&1; then echo "release $TAG exists"; exit 0; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then          # the desktop build may have made it first
+            gh release upload "$TAG" dist/maqati-$VERSION-arm64-v8a.apk dist/maqati-$VERSION-armeabi-v7a.apk --clobber; exit 0; fi
           python3 tests/release_notes.py "$VERSION" > notes.md
           gh release create "$TAG" dist/maqati-$VERSION-arm64-v8a.apk dist/maqati-$VERSION-armeabi-v7a.apk \
             --target "${{ github.sha }}" --title "مقاطع $VERSION" --notes-file notes.md
