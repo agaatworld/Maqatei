@@ -1,6 +1,10 @@
-# Which sites can the app read? (run by hand: Actions → Sites → Run workflow). The table goes to the ci-latest pre-release.
+# Which sites can the app read? (runs when this file or tests/sites.py change, or by hand: Actions → Sites). The table goes to the ci-latest pre-release.
 name: Sites
-on: { workflow_dispatch: {} }
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["tests/sites.py", ".github/workflows/sites.yml"]
 permissions: { contents: write }
 jobs:
   sites:
