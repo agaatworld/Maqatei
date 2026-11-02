@@ -599,7 +599,7 @@ def get_silence(r):
     lv = silence.cached(f)
     s = db.get_settings()
     if lv:
-        sp = silence.spans(silence.levels(lv), float(r.query.get("min") or s.get("sil_min") or 0.3),
+        sp = silence.spans(silence.levels(lv), float(r.query.get("min") or s.get("sil_min") or 0.1),
                            r.query.get("sens") or s.get("sil_sens") or "normal")
         return {"spans": sp, "saved": round(sum(b - a for a, b in sp), 1)}
     for j in db.q("SELECT id, status, params, message FROM jobs WHERE kind='levels' ORDER BY id DESC LIMIT 30"):
@@ -641,6 +641,33 @@ def suggest_name(r):
     th.start()
     th.join(40)                                  # never keep the person waiting: no answer in time, no suggestion
     return out or {"name": "", "source": None}
+
+
+@route("POST", "/api/easy")
+def easy(r):
+    """The simple first page: a link (or a file already added) → one task that gives the finished file."""
+    b = r.body
+    if b.get("item_id"):
+        iid = int(b["item_id"])
+        i = db.one("SELECT * FROM items WHERE id=?", (iid,))
+        if not i:
+            raise HTTPError(404)
+    else:
+        urls = [u for u in (b.get("text") or "").split() if u.startswith(("http://", "https://"))]
+        if not urls:
+            raise HTTPError(400, M("easy_no_link"))
+        iid = db.run("INSERT INTO items (folder_id, title, kind, url, media, duration, created) VALUES (?,?,?,?,?,?,?)",
+                     (None, urls[0], "link", urls[0], "video" if b.get("want") != "audio" else "audio", 0, db.now()))
+        i = db.one("SELECT * FROM items WHERE id=?", (iid,))
+    want = "audio" if b.get("want") == "audio" else "video"
+    extra = {k: 1 for k in ("demusic", "nosil") if b.get(k)}
+    if extra.get("demusic") and not music.available():
+        raise HTTPError(400, M("music_na"))
+    tag = (f" · {M('music_name')}" if extra.get("demusic") else "") + (f" · {M('nosil_name')}" if extra.get("nosil") else "")
+    title = M("t_dl_video" if want == "video" else "t_dl_audio", t=i["title"]) + tag
+    jid = jobs.add("easy", iid, title, want=want, **extra, **(sil_opts(b) if extra.get("nosil") else {}),
+                   **({"q": int(b["q"])} if b.get("q") else {}))
+    return {"ok": True, "id": jid, "item_id": iid}
 
 
 @route("POST", "/api/demusic")

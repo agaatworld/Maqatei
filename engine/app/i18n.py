@@ -87,6 +87,7 @@ MSG = {
                      "نفدت ذاكرة الهاتف أثناء حذف الموسيقى (أغلق التطبيق مرتين). أغلق التطبيقات الأخرى وأعد المحاولة، أو اعملها على الكمبيوتر."),
     "no_picture": ("The site gave no picture for this part right now (sound only). Press Retry, or choose another quality from ▾.",
                    "لم يُعطِ الموقع صورة لهذا المقطع الآن (صوت فقط). اضغط «أعد المحاولة» أو اختر جودة أخرى من ▾."),
+    "easy_no_link": ("Paste a link first (or choose a file).", "الصق رابطًا أولًا (أو اختر ملفًا)."),
     "music_na": ("Music removal is not available on this device yet.", "حذف الموسيقى غير متاح على هذا الجهاز بعد."),
     "hosted_disabled": ("Not available on the hosted version — this is a shared server.",
                         "غير متاح على النسخة المستضافة — هذا خادم مشترك."),

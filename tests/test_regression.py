@@ -256,6 +256,18 @@ def main():
         else:
             print("  skip (no numpy/onnxruntime/onnx here)")
 
+        print("simple first page")
+        e1 = call("POST", "/api/easy", {"item_id": a, "want": "audio", "nosil": True, "sil_min": 0.3})["id"]
+        e2 = call("POST", "/api/easy", {"item_id": v, "want": "video"})["id"]
+        e3 = call("POST", "/api/easy", {"item_id": v, "want": "audio"})["id"]
+        js = {j["id"]: j for j in wait_jobs(lambda j: j["kind"] == "easy")}
+        r1, r2, r3 = (js.get(x, {}).get("result") or "" for x in (e1, e2, e3))
+        check("one button: sound without silences, the video itself, the sound of a video",
+              all(js.get(x, {}).get("status") == "done" for x in (e1, e2, e3)) and "بدون سكتات" in r1 and dur(lib / r1) < 90
+              and r2.endswith(".mp4") and r3.endswith(".mp3") and abs(dur(lib / r3) - 60) < 0.5,
+              [(j["status"], j["message"], j["result"]) for j in js.values()])
+        check("one button needs a link", call("POST", "/api/easy", {"text": "no link here"}, ok=False) == 400)
+
         print("convert and tasks")
         call("POST", f"/api/items/{v}/action", {"action": "convert"})
         js = wait_jobs(lambda j: j["kind"] == "convert")

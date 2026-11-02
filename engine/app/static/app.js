@@ -195,7 +195,17 @@ const TX = {
   map_part: ['Make it a part', 'اجعله مقطعًا'], map_all_parts: ['All as parts', 'الكل مقاطع'],
   map_all_q: ['Make {0} parts, one for each chapter shown?', 'إنشاء {0} مقطعًا، مقطع لكل باب ظاهر؟'], map_parts_done: ['{0} parts added', 'أضيف {0} مقطعًا'],
   map_none: ['Nothing of this kind in this lesson.', 'لا يوجد شيء من هذا النوع في الدرس.'],
-  sec_n: ['{0} s', '{0} ث'], bg_slow: ['Downloads slow down when you leave the app: allow Maqati to work in the background', 'التنزيل يبطؤ حين تخرج من التطبيق: اسمح لمقاطع بالعمل في الخلفية'],
+  sec_n: ['{0} s', '{0} ث'], ez_got_link: ['Link received — choose, then press Download', 'وصل الرابط — اختر ثم اضغط «تنزيل»'], ez_title: ['Add a link or a file', 'أضف رابطًا أو ملفًا'],
+  ez_ph: ['Paste the link here (YouTube, Facebook, Instagram, TikTok, X…)', 'الصق الرابط هنا (يوتيوب، فيسبوك، إنستغرام، تيك توك، إكس…)'],
+  ez_paste: ['Paste', 'لصق'], ez_file: ['Choose a file', 'اختر ملفًا'], ez_what: ['What do you want?', 'ماذا تريد؟'],
+  ez_video: ['Video', 'فيديو'], ez_audio: ['Sound only', 'صوت فقط'], ez_go: ['Download', 'تنزيل'],
+  ez_mu_p: ['Keeps the voice, removes instruments and beats', 'يُبقي الصوت ويحذف الآلات والإيقاع'], ez_ns_p: ['Takes out the pauses, keeps every word', 'يحذف الوقفات ويُبقي كل الكلام'],
+  ez_hint: ['The file is saved in Downloads by itself when it is ready. You can leave the app meanwhile.', 'يُحفظ الملف في «التنزيلات» وحده حين يجهز. ويمكنك الخروج من التطبيق أثناء ذلك.'],
+  ez_hint_web: ['The file is saved by itself when it is ready. Keep this page open.', 'يُحفظ الملف وحده حين يجهز. أبقِ هذه الصفحة مفتوحة.'],
+  ez_done: ['Ready — saved in Downloads', 'جاهز — حُفظ في التنزيلات'], ez_again: ['Save again', 'احفظ مرة أخرى'], ez_more: ['All the tools', 'كل الأدوات'],
+  ez_starting: ['Starting…', 'يبدأ…'], ez_started: ['Started — you will see it below', 'بدأ — تراه في الأسفل'], uploading: ['Sending the file', 'إرسال الملف'],
+  ez_paste_hint: ['Press and hold in the box, then choose “Paste”', 'اضغط مطولًا داخل المربع ثم اختر «لصق»'],
+  simple_home: ['First page', 'الصفحة الأولى'], simple_on: ['Simple (big buttons)', 'بسيطة (أزرار كبيرة)'], simple_off: ['Full', 'كاملة'], bg_slow: ['Downloads slow down when you leave the app: allow Maqati to work in the background', 'التنزيل يبطؤ حين تخرج من التطبيق: اسمح لمقاطع بالعمل في الخلفية'],
   bg_allow: ['Allow', 'اسمح'], ns_opts: ['Silence length for downloads', 'طول السكتة للتنزيل'], ns_go: ['Make the file', 'اصنع الملف'],
   ns_p: ['Silences at least this long are taken out of the file. A small gap is always kept between words, so no word is cut.',
     'تُحذف من الملف كل سكتة بهذا الطول أو أطول. ويبقى دائمًا فاصل صغير بين الكلمات فلا تُقطع كلمة.'], sugg: ['Suggested:', 'اسم مقترح:'], sugg_ok: ['Use it', 'اعتمده'], sugg_done: ['Name added — you can still change it', 'وُضع الاسم — ويمكنك تعديله'],
@@ -295,6 +305,10 @@ function applyLook() {
   if (!COLORS.includes(s.accent)) s.accent = COLORS[0];
   const dark = s.theme === 'dark' || (s.theme !== 'light' && s.theme !== 'sepia' && matchMedia('(prefers-color-scheme: dark)').matches);
   r.classList.toggle('isdark', dark);
+  if (window.MaqatiApp && MaqatiApp.setBars) setTimeout(() => {          // the strips beside the phone's own buttons
+    const c = getComputedStyle(document.body).backgroundColor.match(/\d+/g) || [246, 244, 239];
+    try { MaqatiApp.setBars('#' + c.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join(''), dark); } catch (e) {}
+  }, 50);
   const fu = FONTS[s.font_ui] || FONTS.tajawal, fh = FONTS[s.font_head] || fu;
   r.style.setProperty('--ui', fstack(s.font_ui)); r.style.setProperty('--head', fstack(s.font_head || s.font_ui)); r.style.setProperty('--read', fstack(s.font_read || 'amiri'));
   r.style.setProperty('--wb', fu[3]); r.style.setProperty('--wn', fu[5]); r.style.setProperty('--wh', fh[4]);
@@ -322,12 +336,12 @@ async function loadLib() { const st = await api('/api/state'); S.folders = st.fo
 
 /* ================= router ================= */
 const ROUTES = [
-  [/^#\/home$/, () => vHome()], [/^#\/lib$/, () => vLibrary()], [/^#\/lib\/f\/(\w+)(?:\/(\w+))?$/, m => vFolder(m[1], m[2])], [/^#\/item\/(\d+)(?:\/(\d+(?:\.\d+)?))?$/, m => vItem(+m[1], m[2] ? +m[2] : null)],
+  [/^#\/easy$/, () => vEasy()], [/^#\/home$/, () => vHome()], [/^#\/lib$/, () => vLibrary()], [/^#\/lib\/f\/(\w+)(?:\/(\w+))?$/, m => vFolder(m[1], m[2])], [/^#\/item\/(\d+)(?:\/(\d+(?:\.\d+)?))?$/, m => vItem(+m[1], m[2] ? +m[2] : null)],
   [/^#\/search$/, () => vSearch()], [/^#\/projects$/, () => vProjects()], [/^#\/project\/(\d+)$/, m => vProject(+m[1])],
   [/^#\/tasks(?:\/(\w+))?$/, m => vTasks(m[1])], [/^#\/works$/, () => vFolder('all', 'works', true)], [/^#\/settings$/, () => vSettings()], [/^#\/help$/, () => vHelp()],
 ];
 async function route() {
-  const h = location.hash || '#/home';
+  const h = location.hash || (store.get('simple', true) ? '#/easy' : '#/home');
   if (!/^#\/item\//.test(h)) leaveItemPage();
   S.pick = null;
   const hit = ROUTES.find(([rx]) => rx.test(h));
@@ -343,7 +357,7 @@ window.addEventListener('scroll', () => $('.top').classList.toggle('scrolled', w
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if (S.set.theme === 'auto' || !S.set.theme) applyLook(); });
 function renderTabs() {
   const h = location.hash || '#/home';
-  const on = /^#\/home/.test(h) ? 'home' : /^#\/works/.test(h) ? 'works' : /^#\/(lib|item)/.test(h) ? 'lib' : /^#\/search/.test(h) ? 'search' : /^#\/project/.test(h) ? 'projects'
+  const on = /^#\/(home|easy)/.test(h) || !location.hash ? 'home' : /^#\/works/.test(h) ? 'works' : /^#\/(lib|item)/.test(h) ? 'lib' : /^#\/search/.test(h) ? 'search' : /^#\/project/.test(h) ? 'projects'
     : /^#\/tasks/.test(h) ? 'tasks' : /^#\/(settings|help)/.test(h) ? 'settings' : '';
   const active = S.jobs.filter(j => j.status === 'running' || j.status === 'queued').length;
   const tab = ([k, i, n, x]) => `<a href="#/${k}" class="${on === k ? 'on' : ''}${x ? ' x' : ''}"><i>${ICON(i)}</i><span>${t(n)}</span>${k === 'tasks' && active ? `<span class="badge">${active}</span>` : ''}</a>`;
@@ -353,7 +367,7 @@ function renderTabs() {
   const sig = on + '|' + active + '|' + LANG;
   if ($('#tabbar').dataset.sig === sig) return;
   $('#tabbar').dataset.sig = sig;
-  $('#tabbar').innerHTML = [['home', 'sparkle', 'home'], ['lib', 'library', 'library']].map(tab).join('')
+  $('#tabbar').innerHTML = [[store.get('simple', true) ? 'easy' : 'home', 'sparkle', 'home'], ['lib', 'library', 'library']].map(tab).join('')
     + `<button class="tadd" data-act="add" aria-label="${t('add')}">${ICON('plus')}<span>${t('add')}</span></button>`
     + [['search', 'search', 'search'], ['projects', 'case', 'projects']].map(tab).join('')
     + `<span class="xsep"></span>` + [['tasks', 'clock', 'tasks', 1], ['works', 'box', 'my_works', 1], ['settings', 'gear', 'settings', 1]].map(tab).join('');
@@ -805,6 +819,57 @@ function workRow(w) {
         btns: `<button class="ibtn" data-act="open-tr" data-item="${w.item_id}" data-k="${w.id}" aria-label="open">${IC.doc}</button><button class="ibtn" data-act="export-tr" data-tid="${w.id}" data-title="${esc(w.name)}" aria-label="export">📕</button>` })
     : fileRow({ path: w.path, name: w.name, size: w.size, clip: true, sub: esc(nice(w.item_title || '')), when, locked: w.locked });
 }
+/* ================= the simple first page: paste a link (or pick a file), choose, one big button =================
+   Made for anyone, also for older eyes and hands: big letters, big buttons, few choices, every choice says what it does. */
+const EZ = { want: () => store.get('ezWant', 'video'), mu: () => store.get('ezMu', false), ns: () => store.get('ezNs', false), files: [] };
+async function vEasy() {
+  await loadLib();
+  const big = (k, on, icon, label, sub) => `<button type="button" class="ezt ${on ? 'on' : ''}" data-act="ez-t" data-k="${k}" aria-pressed="${on}"><span class="ezc">${on ? '✓' : ''}</span><b>${icon} ${label}</b><small>${sub}</small></button>`;
+  view().innerHTML = `<div class="easy">
+    <h2 class="ezh">${t('ez_title')}</h2>
+    <div class="ezbox"><textarea id="ezIn" dir="ltr" placeholder="${t('ez_ph')}" autocomplete="off"></textarea>
+      <div class="ezrow"><button type="button" class="ezb" data-act="ez-paste">📋 ${t('ez_paste')}</button>
+        <button type="button" class="ezb" data-act="ez-file">📁 ${t('ez_file')}</button><input type="file" id="ezFile" accept="audio/*,video/*" hidden></div>
+      <div class="ezfile" id="ezFl" hidden></div></div>
+    <div class="ezq">${t('ez_what')}</div>
+    <div class="ezseg"><button type="button" class="${EZ.want() === 'video' ? 'on' : ''}" data-act="ez-want" data-v="video">🎬 ${t('ez_video')}</button>
+      <button type="button" class="${EZ.want() === 'audio' ? 'on' : ''}" data-act="ez-want" data-v="audio">🎧 ${t('ez_audio')}</button></div>
+    <div class="ezopts">${S.music !== false ? big('mu', EZ.mu(), '🎵', t('nomusic_dl'), t('ez_mu_p')) : ''}${big('ns', EZ.ns(), '⏩', t('nosil_dl'), t('ez_ns_p'))}</div>
+    <button class="ezgo" id="ezGo" data-act="ez-go" disabled>⬇ ${t('ez_go')}</button>
+    <p class="ezhint">${t(IS_WEB ? 'ez_hint_web' : 'ez_hint')}</p>
+    <div id="ezJobs"></div>
+    <a class="ezmore" href="#/home">🧰 ${t('ez_more')}</a></div>`;
+  const inp = $('#ezIn'), go = $('#ezGo');
+  const ready = () => { go.disabled = !(/https?:\/\/\S+/.test(inp.value) || EZ.files.length); };
+  inp.oninput = ready; EZ.files = []; ready();
+  $('#ezFile').onchange = e => { EZ.files = [...e.target.files]; const fl = $('#ezFl'); fl.hidden = !EZ.files.length; fl.textContent = '📄 ' + EZ.files.map(f => f.name).join('، '); ready(); };
+  EZ.ready = ready;
+  renderEasyJobs();
+}
+/* a link shared from another app (Facebook, Instagram, TikTok, YouTube…): on the simple page it is put in the box,
+   so the person only chooses and presses the big button */
+window.MQ_shared = link => {
+  if (!store.get('simple', true)) return false;
+  const put = () => { const i = $('#ezIn'); if (!i) return setTimeout(put, 200); i.value = link; EZ.ready && EZ.ready(); i.scrollIntoView({ block: 'center' }); };
+  if (!/^#\/easy/.test(location.hash)) location.hash = '#/easy';
+  setTimeout(put, 300); toast('🔗 ' + t('ez_got_link'), null, 4000);
+  return true;
+};
+function renderEasyJobs() {
+  const box = $('#ezJobs'); if (!box) return;
+  const js = S.jobs.filter(j => j.kind === 'easy').slice(0, 5);
+  const sig = js.map(j => j.id + j.status + Math.round((j.progress || 0) * 100)).join('|');
+  if (box.dataset.sig === sig) return; box.dataset.sig = sig;
+  box.innerHTML = js.map(j => {
+    const pct = Math.round((j.progress || 0) * 100), done = j.status === 'done' && j.result, err = j.status === 'error';
+    return `<div class="ezjob ${j.status}"><b dir="auto">${esc(nice(j.title))}</b>
+      ${done ? `<div class="ezok">✅ ${t('ez_done')}</div><div class="ezrow"><button class="ezb pri" data-act="play-file" data-path="${esc(j.result)}">▶ ${t('play')}</button>
+          <button class="ezb" data-act="share-file" data-path="${esc(j.result)}">📤 ${t('share')}</button><a class="ezb" href="${mediaURL(j.result)}?dl=1">⬇ ${t('ez_again')}</a></div>`
+      : err ? `<div class="ezerr">⚠️ <span dir="auto">${esc(j.message || '')}</span></div><button class="ezb" data-act="job-retry" data-j="${j.id}">↻ ${t('retry')}</button>`
+      : `<div class="ezbar"><i style="width:${pct}%"></i></div><div class="ezst"><bdi>${pct}%</bdi> · <span dir="auto">${esc(j.message || t('waiting'))}</span>${j.eta ? ' · ' + leftTxt(j) : ''}</div>`}</div>`;
+  }).join('');
+}
+
 /* ================= home: what you are on, what is running, your latest works ================= */
 async function vHome() {
   await loadLib();
@@ -1838,6 +1903,7 @@ async function pollJobs() {
   else if (fresh.length > 1) toast('✅ ' + fresh.length);
   if (/^#\/tasks/.test(location.hash)) renderJobs();
   if (/^#\/home/.test(location.hash)) renderHomeJobs();
+  if (/^#\/easy/.test(location.hash) || !location.hash) renderEasyJobs();
   if (S.item) {
     const mine = js.filter(j => j.item_id === S.item.id);
     const sig = mine.map(j => j.id + j.status + Math.round((j.progress || 0) * 20)).join('|');
@@ -1905,6 +1971,7 @@ async function vSettings() {
       <div class="field"><label>${t('f_head')}</label>${fontSeg('font_head', s.font_head || s.font_ui || 'tajawal', 'data-set')}</div>
       <div class="field"><label>${t('f_read')}</label>${fontSeg('font_read', s.font_read || 'amiri', 'data-set')}
         <p class="fprev" style="font-family:${fstack(s.font_read || 'amiri')}">الحمد لله رب العالمين، والصلاة والسلام على نبينا محمد.</p></div></div>
+    <div class="card pad"><h3>🏠 ${t('simple_home')}</h3>${segc('simple', store.get('simple', true) ? 1 : 0, [[1, t('simple_on')], [0, t('simple_off')]], 'data-simple')}</div>
     <div class="card pad"><h3>⏩ ${t('sil_skip')}</h3><p class="muted small">${t('sil_p')}</p>
       <label class="sw"><span>${t('sil_skip')}</span><input type="checkbox" data-set-bool="sil_skip" ${s.sil_skip ? 'checked' : ''}></label>${silFields(s)}</div>
     <div class="card pad"><h3>🔔 ${t('s_dhikr')}</h3><p class="muted small">${t('dhikr_p')}</p>${sg('dhikr', s.dhikr ?? 15, [[0, t('off')], [10, t('m10')], [15, t('m15')]])}${sw('reminders', t('s_rmd'))}</div>
@@ -2075,6 +2142,26 @@ const ACT = {
     await saveSet({ sil_skip: !S.set.sil_skip }); SIL.key = ''; silTools(); silLoad();
   },
   'sil-adjust': () => silSheet(),
+  'ez-want': el => { store.set('ezWant', el.dataset.v); $$('.ezseg button').forEach(b => b.classList.toggle('on', b === el)); },
+  'ez-t': el => { const k = el.dataset.k === 'mu' ? 'ezMu' : 'ezNs', on = !store.get(k, false); store.set(k, on); el.classList.toggle('on', on); el.setAttribute('aria-pressed', on); $('.ezc', el).textContent = on ? '✓' : ''; },
+  'ez-file': () => $('#ezFile').click(),
+  'ez-paste': async () => {
+    const inp = $('#ezIn');
+    try { const txt = await navigator.clipboard.readText(); if (txt) { inp.value = txt.trim(); EZ.ready && EZ.ready(); return; } } catch (e) {}
+    inp.focus(); toast(t('ez_paste_hint'), null, 5000);
+  },
+  'ez-go': async el => {
+    const inp = $('#ezIn'), body = { want: EZ.want(), demusic: EZ.mu(), nosil: EZ.ns(), ...(EZ.ns() ? nsOpts() : {}) };
+    el.disabled = true; const label = el.innerHTML; el.innerHTML = `<span class="spin"></span> ${t('ez_starting')}`;
+    try {
+      if (EZ.files.length) {
+        const ids = await upload(EZ.files, '', p => { el.innerHTML = `<span class="spin"></span> ${t('uploading')} ${Math.round(p * 100)}%`; });
+        for (const id of ids) wantSave(await post('/api/easy', { ...body, item_id: id }));
+      } else wantSave(await post('/api/easy', { ...body, text: inp.value }));
+      inp.value = ''; EZ.files = []; $('#ezFl').hidden = true; toast('✅ ' + t('ez_started'), null, 4000); await pollJobs();
+    } catch (e) { toast('⚠️ ' + e.message, null, 6000); }
+    el.innerHTML = label; EZ.ready && EZ.ready();
+  },
   'share-now': () => { const it = PL.item; if (!it) return; const base = S.item && S.item.id === it.id ? S.item : (S.items.find(i => i.id === it.parent) || it); shareMoment(base, PL.time(), null, null, it.file ? [it.file] : []); },
   'share-file': el => shareFile(el.dataset.path),
   'map-share': el => { const c = S.item.map.chapters[+el.dataset.ci]; shareMoment(S.item, c.t, c.end, c.title, []); },
@@ -2312,6 +2399,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') document.doc
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-set] button'); if (b) { const k = b.closest('[data-set]').dataset.set; let v = b.dataset.v; if (/^[\d.]+$/.test(v)) v = +v;
     $$('button', b.parentElement).forEach(x => x.classList.toggle('on', x === b)); saveSet({ [k]: v }).then(() => { if (k === 'lang' || k === 'font_read') vSettings(); }); }
+  const sp = e.target.closest('[data-simple] button'); if (sp) { $$('button', sp.parentElement).forEach(x => x.classList.toggle('on', x === sp)); store.set('simple', sp.dataset.v === '1'); $('#tabbar').dataset.sig = ''; renderTabs(); }
   const z = e.target.closest('[data-zoom] button'); if (z) { $$('button', z.parentElement).forEach(x => x.classList.toggle('on', x === z)); store.set('zoom', z.dataset.v); fitZoom(); }
   const a = e.target.closest('[data-accent]'); if (a) { $$('[data-accent]').forEach(x => x.classList.toggle('on', x === a)); saveSet({ accent: a.dataset.accent }); }
 });

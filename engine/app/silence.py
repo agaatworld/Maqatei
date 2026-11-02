@@ -19,10 +19,10 @@ from . import media
 STEP = 0.01                       # seconds per loudness value (a hundredth of a second)
 CACHE = db.DATA / "levels"
 WEB = os.environ.get("MAQATI_WEB") == "1"
-# how close to the background noise a moment must be to count as silence (0 = only the noise itself, 1 = speech),
-# and the most silence kept around the words (half before, half after)
-SENS = {"careful": (0.12, 0.4), "normal": (0.2, 0.3), "strong": (0.3, 0.2)}
-KEEP_MIN = 0.06                   # even the shortest skipped silence leaves this much: the words never touch
+# how close to the background noise a moment must be to count as a pause (0 = only the noise itself, 1 = speech),
+# and the guard left on each side of the deep silence inside it
+SENS = {"careful": (0.12, 0.05), "normal": (0.2, 0.035), "strong": (0.3, 0.025)}
+KEEP_MIN = 0.06                   # even the shortest pause keeps this much: the words never touch
 
 
 def _key(src):
@@ -58,29 +58,38 @@ def levels(f):
     return [10 * math.log10(x) if x > 1e-12 else -120.0 for x in a]
 
 
-def spans(lv, min_len=0.3, sens="normal"):
-    """[(from, to)] seconds that can be skipped: silences of at least min_len, minus what is kept around the words.
-    A long silence keeps up to the chosen margin; a short one keeps half of itself (at least KEEP_MIN), so even
-    0.1-second gaps are tightened without the end of one word touching the start of the next."""
+def spans(lv, min_len=0.1, sens="normal"):
+    """[(from, to)] seconds that can be taken out: every pause of at least min_len loses its silence, never a word.
+    A pause is where the sound is close to the file's own background noise. Its edges are often the soft end of a
+    word (a fading vowel, a breath of "h", the last "s") or the soft start of the next one: those stay. Only the
+    deep silence in the middle of the pause is cut, minus a small guard on each side, and at least KEEP_MIN stays."""
     if len(lv) < 10:
         return []
-    k, keep_max = SENS.get(sens, SENS["normal"])
+    k, guard = SENS.get(sens, SENS["normal"])
     s = sorted(lv)
     floor, speech = s[len(s) // 20], s[len(s) * 9 // 10]
     if speech - floor < 12:                  # no clear quiet moments (music, constant noise): skip nothing
         return []
-    line = floor + (speech - floor) * k
+    line = floor + (speech - floor) * k      # quieter than this: a pause
+    deep = floor + (speech - floor) * k * 0.5   # quieter than this: real silence, no word in it
+    g = int(round(guard / STEP))
     out, n, i = [], len(lv), 0
     while i < n:
         if lv[i] < line:
             j = i
             while j < n and lv[j] < line:
                 j += 1
-            ln = (j - i) * STEP
-            keep = min(keep_max, max(KEEP_MIN, ln / 2))
-            if ln >= min_len - 1e-6 and ln - keep >= 0.03:
-                a = i * STEP + keep / 2
-                out.append((round(a, 3), round(a + ln - keep, 3)))
+            if (j - i) * STEP >= min_len - 1e-6:
+                core = [x for x in range(i, j) if lv[x] < deep]
+                if core:
+                    a, b = core[0] + g, core[-1] + 1 - g       # the deep silence, minus the guards
+                    keep_now = (j - i) - (b - a)
+                    short = int(round(KEEP_MIN / STEP)) - keep_now
+                    if short > 0:                               # keep at least KEEP_MIN of every pause
+                        a += (short + 1) // 2
+                        b -= short // 2
+                    if (b - a) * STEP >= 0.03:
+                        out.append((round(a * STEP, 3), round(b * STEP, 3)))
             i = j
         else:
             i += 1

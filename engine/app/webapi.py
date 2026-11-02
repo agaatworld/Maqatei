@@ -318,7 +318,7 @@ def dispatch(method, url, body=b"", dur=None, kind=None):
 
 
 # ---------- tasks ----------
-SUPPORTED = ("clip", "convert", "transcribe", "project", "info", "fetch", "levels", "nosil", "map")
+SUPPORTED = ("clip", "convert", "transcribe", "project", "info", "fetch", "levels", "nosil", "map", "easy")
 
 
 def next_job():

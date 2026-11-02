@@ -103,6 +103,21 @@ assert j[0]['status']=='done', 'VIDEO PART FROM LINK FAILED'
 print('video part straight from a link OK')"
 log
 
+# the simple first page: one button, a link → the finished video file
+EJ=$(curl -sf -X POST -H 'Content-Type: application/json' -d "{\"text\":\"$DASH\",\"want\":\"video\",\"q\":240}" http://127.0.0.1:8775/api/easy | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")
+for i in $(seq 1 300); do
+  curl -sf http://127.0.0.1:8775/api/jobs -o $OUT/jobs-easy.json
+  if python3 -c "import json,sys;j=[x for x in json.load(open('$OUT/jobs-easy.json')) if x['id']==$EJ];sys.exit(0 if j and j[0]['status'] in ('done','error') else 1)"; then break; fi
+  sleep 1
+done
+python3 -c "
+import json
+j=[x for x in json.load(open('$OUT/jobs-easy.json')) if x['id']==$EJ][0]
+print('  ', j['status'], (j.get('result') or j.get('message') or '')[:300])
+assert j['status']=='done' and (j['result'] or '').endswith(('.mp4','.webm','.mkv')), 'ONE-BUTTON DOWNLOAD FAILED'
+print('one-button download OK')"
+log
+
 # removing music on the phone: the app's own code runs the real model (downloaded on first use) on the 20 s tone
 python3 -c "import json;h=json.load(open('$OUT/health.json'));assert h.get('music'), 'MUSIC REMOVAL NOT AVAILABLE';print('music removal available')"
 T0=$(date +%s)

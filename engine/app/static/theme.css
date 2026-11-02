@@ -495,3 +495,38 @@ html.isdark .nsrow.mu .nsl{color:#B197FC}
 .sugg .sgn{flex:1;min-width:140px;background:var(--bg2);padding:6px 10px;border-radius:10px}
 .sugg .sgok{min-height:38px}
 .chip.nsopt{font-weight:700;border-color:var(--acc);color:var(--acc)}
+
+/* 5.3: the simple first page — big letters and buttons, few choices */
+.easy{max-width:720px;margin:0 auto;padding:4px 2px 24px}
+.easy .ezh{font-size:1.55rem;margin:2px 4px 10px;text-align:center}
+.easy .ezbox{background:var(--card);border:2px solid var(--line);border-radius:22px;padding:14px;box-shadow:var(--shadow)}
+.easy textarea{width:100%;min-height:92px;border:2px dashed color-mix(in srgb,var(--acc) 45%,var(--line));border-radius:16px;padding:14px;font-size:1.25rem;background:var(--bg);color:var(--ink);resize:vertical;box-sizing:border-box}
+.easy textarea:focus{outline:3px solid color-mix(in srgb,var(--acc) 35%,transparent);border-style:solid}
+.easy .ezrow{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}
+.easy .ezb{flex:1;min-width:130px;min-height:60px;border-radius:16px;border:2px solid var(--line);background:var(--bg2);color:var(--ink);font-size:1.2rem;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;cursor:pointer}
+.easy .ezb.pri{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.easy .ezfile{margin-top:10px;font-size:1.1rem;font-weight:700;color:var(--acc)}
+.easy .ezq{font-size:1.25rem;font-weight:800;margin:14px 6px 8px}
+.easy .ezseg{display:flex;gap:10px}
+.easy .ezseg button{flex:1;min-height:66px;border-radius:18px;border:3px solid var(--line);background:var(--card);color:var(--ink);font-size:1.35rem;font-weight:800;cursor:pointer}
+.easy .ezseg button.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 12%,var(--card));color:var(--acc)}
+.easy .ezopts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.easy .ezt{position:relative;text-align:start;min-height:78px;border-radius:18px;border:3px solid var(--line);background:var(--card);color:var(--ink);padding:10px 12px;padding-inline-start:46px;cursor:pointer;display:flex;flex-direction:column;gap:3px}
+.easy .ezt b{font-size:1.15rem}
+.easy .ezt small{font-size:.9rem;color:var(--muted);line-height:1.35}
+.easy .ezt .ezc{position:absolute;inset-inline-start:10px;top:12px;width:28px;height:28px;border-radius:9px;border:3px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff}
+.easy .ezt.on{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,var(--card))}
+.easy .ezt.on .ezc{background:var(--acc);border-color:var(--acc)}
+.easy .ezgo{display:block;width:100%;margin-top:14px;min-height:80px;position:sticky;bottom:calc(var(--tabbar) + var(--dock) + env(safe-area-inset-bottom) + 8px);z-index:5;border:0;border-radius:22px;background:var(--acc);color:var(--acc-ink);font-size:1.7rem;font-weight:900;cursor:pointer;box-shadow:0 10px 26px -8px color-mix(in srgb,var(--acc) 70%,transparent)}
+.easy .ezgo:disabled{opacity:1;background:color-mix(in srgb,var(--acc) 38%,var(--bg2));box-shadow:none;cursor:default}
+.easy .ezhint{text-align:center;color:var(--muted);font-size:1.05rem;margin:10px 8px 0}
+.easy .ezjob{margin-top:14px;background:var(--card);border:2px solid var(--line);border-radius:18px;padding:14px}
+.easy .ezjob>b{font-size:1.15rem;display:block}
+.easy .ezbar{height:16px;border-radius:99px;background:var(--bg2);margin:12px 0 8px;overflow:hidden}
+.easy .ezbar i{display:block;height:100%;background:var(--acc);border-radius:99px}
+.easy .ezst{font-size:1.1rem;color:var(--muted)}
+.easy .ezok{font-size:1.3rem;font-weight:800;color:var(--ok);margin:10px 0 0}
+.easy .ezerr{font-size:1.1rem;color:var(--danger);margin:10px 0}
+.easy .ezmore{display:block;text-align:center;margin:22px 0 4px;font-size:1.15rem;font-weight:700;color:var(--acc)}
+@media (max-width:340px){.easy .ezopts{grid-template-columns:1fr}}
+html,body{overflow-x:clip}         /* clip (not hidden): keeps the page the scroller, so sticky buttons stick */

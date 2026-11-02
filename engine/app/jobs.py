@@ -14,7 +14,7 @@ from .i18n import M
 from .media import Cancelled
 
 CATEGORY = {"info": "info", "fetch": "dl", "clip": "dl", "convert": "dl", "project": "dl", "transcribe": "tx",
-            "levels": "info", "nosil": "dl", "map": "tx", "demusic": "ai"}
+            "levels": "info", "nosil": "dl", "map": "tx", "demusic": "ai", "easy": "dl"}
 CHUNK = 300          # transcribe in pieces of about 5 minutes; finished pieces are kept, so work resumes
 REACH = 25           # a piece ends at the pause nearest its 5-minute mark, looking this far either side
 OVERLAP = 4          # only when no pause was found: seconds shared by neighbours so no word is lost
@@ -352,6 +352,66 @@ def picture_kept(dst, fmt):
 
 
 # ---------- runners ----------
+def read_link(job, progress):
+    """The title, length and picture of a link (the first step of every link)."""
+    item = item_of(job)
+    progress(0.1, M("reading_link"))
+    info = media.link_info(item["url"])
+    kind = "youtube" if "youtube" in info["site"] else ("soundcloud" if "soundcloud" in info["site"] else "link")
+    title = info["title"] if item["title"] == item["url"] else item["title"]     # keep a title the user gave
+    db.run("UPDATE items SET title=?, duration=?, thumb=?, media=?, kind=?, heights=? WHERE id=?",
+           (title, info["duration"], info["thumb"], info["media"], kind, json.dumps(info.get("heights") or []), item["id"]))
+    ensure_dir(item_of(job))
+    return info, title
+
+
+def run_easy(job, p, ev, progress):
+    """The simple first page: one button does everything — get the video or the sound, then (if asked) take out
+    the music and the silences. One task, one progress bar, one finished file."""
+    want = "audio" if p.get("want") == "audio" else "video"
+    steps = 1 + bool(p.get("demusic")) + bool(p.get("nosil"))
+    span = 0.9 / steps
+    at = [0.05]
+
+    def stage(name):
+        a = at[0]
+        at[0] += span
+        return lambda x, m=None: progress(min(0.99, a + span * max(0.0, min(1.0, x or 0))), m)
+    item = item_of(job)
+    if item["url"] and (item["title"] == item["url"] or not item["dir"]):
+        read_link(job, lambda x, m=None: progress(0.02, m))
+        item = item_of(job)
+    src = local_source(item)
+    get = stage("get")
+    if item["url"] and (not src or (want == "video" and media.probe(src)[1] != "video")):
+        src = lib(run_fetch(job, {"want": want, **({"height": int(p["q"])} if p.get("q") else {})}, ev, get))
+    if not src:
+        raise RuntimeError(M("need_download"))
+    out = src
+    if want == "audio" and media.probe(src)[1] == "video":     # the sound only, from a video
+        out = media.unique(src.with_name(src.stem + ".mp3"))
+        media.to_mp3(src, out, ev, lambda x: get(x, M("making_mp3")), item["duration"] or None)
+    video = want == "video" and media.probe(out)[1] == "video"
+    wd = work(job["id"])
+    if p.get("demusic"):
+        if not music.available():
+            raise RuntimeError(M("music_na"))
+        st = stage("music")
+        clean = media.unique(out.with_name(f"{out.stem} ({M('music_name')}){'.mp4' if video else '.mp3'}"))
+        tmp = wd / ("easy-music" + clean.suffix)
+        music.remove_music(out, tmp, video, ev, st, wd / "music")
+        shutil.move(str(tmp), clean)
+        out = clean
+    if p.get("nosil"):
+        st = stage("nosil")
+        try:
+            out = no_silence(out, ev, st, wd, min_len=p.get("sil_min"), sens=p.get("sil_sens"))
+        except SilenceNone:
+            pass                                   # nothing to take out: the file is already continuous
+    shutil.rmtree(db.WORK / f"job{job['id']}", ignore_errors=True)
+    return rel(out)
+
+
 def run_info(job, p, ev, progress):
     item = item_of(job)
     progress(0.1, M("reading_link"))
@@ -446,7 +506,7 @@ def no_silence(src, ev, progress, workdir, replace=False, q=None, min_len=None, 
     total, kind = media.probe(src)
     progress(0, M("sil_measuring"))
     f = silence.measure(src, ev, lambda x: progress(x * 0.3, M("sil_measuring")), total)
-    sp = silence.spans(silence.levels(f), float(min_len or s.get("sil_min") or 0.3), sens or s.get("sil_sens") or "normal")
+    sp = silence.spans(silence.levels(f), float(min_len or s.get("sil_min") or 0.1), sens or s.get("sil_sens") or "normal")
     if not sp:
         raise SilenceNone(M("sil_none"))
     video = kind == "video"
@@ -765,4 +825,4 @@ def write_files(t):
 
 RUNNERS = {"info": run_info, "fetch": run_fetch, "clip": run_clip, "convert": run_convert,
            "transcribe": run_transcribe, "project": run_project, "levels": run_levels, "nosil": run_nosil, "map": run_map,
-           "demusic": run_demusic}
+           "demusic": run_demusic, "easy": run_easy}

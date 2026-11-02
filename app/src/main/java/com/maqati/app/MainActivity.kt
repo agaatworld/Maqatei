@@ -46,6 +46,7 @@ import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
     private lateinit var web: WebView
+    private lateinit var root: FrameLayout
     private lateinit var splash: LinearLayout
     private lateinit var splashText: TextView
     private lateinit var splashRetry: Button
@@ -198,7 +199,7 @@ class MainActivity : AppCompatActivity() {
 
     // ---------- the window ----------
     private fun buildViews() {
-        val root = FrameLayout(this)
+        root = FrameLayout(this)
         web = WebView(this)
         web.visibility = View.INVISIBLE
         root.addView(web, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
@@ -230,6 +231,16 @@ class MainActivity : AppCompatActivity() {
         }
         splash.addView(splashRetry)
         root.addView(splash, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
+        // Android 15 draws apps under the phone's own buttons and status bar: keep the page inside them,
+        // so the bottom bar and the "Add" button are never hidden behind ||| ○ ‹ (or the gesture line)
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
+            val bars = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.systemBars() or
+                androidx.core.view.WindowInsetsCompat.Type.displayCutout())
+            val ime = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.ime())
+            v.setPadding(bars.left, bars.top, bars.right, maxOf(bars.bottom, ime.bottom))
+            v.setBackgroundColor(Color.parseColor("#F6F4EF"))
+            androidx.core.view.WindowInsetsCompat.CONSUMED
+        }
         setContentView(root)
     }
 
@@ -418,6 +429,14 @@ class MainActivity : AppCompatActivity() {
         pendingFile?.let { pendingFile = null; addSharedFile(it) }
         val link = pendingShare ?: return
         pendingShare = null
+        // the simple first page takes the link into its box (the person chooses and presses Download);
+        // the full app adds it to the library straight away
+        web.evaluateJavascript("(window.MQ_shared ? MQ_shared(${JSONObject.quote(link)}) : false)") { handled ->
+            if (handled != "true") addSharedLink(link)
+        }
+    }
+
+    private fun addSharedLink(link: String) {
         thread {
             val res = Engine.post("/api/links", JSONObject().put("text", link))
             val id = try { res?.let { JSONObject(it).getJSONArray("ids").getInt(0) } } catch (e: Exception) { null }
@@ -432,6 +451,17 @@ class MainActivity : AppCompatActivity() {
     inner class Bridge {
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
         @JavascriptInterface fun playing(on: Boolean) { EngineService.playing = on }
+        /** The page's own background colour for the strips beside the phone's buttons and status bar. */
+        @JavascriptInterface fun setBars(hex: String, dark: Boolean) {
+            ui.post {
+                try {
+                    root.setBackgroundColor(Color.parseColor(hex))
+                    androidx.core.view.WindowInsetsControllerCompat(window, root).apply {
+                        isAppearanceLightStatusBars = !dark; isAppearanceLightNavigationBars = !dark
+                    }
+                } catch (e: Exception) { }
+            }
+        }
         /** Share text (a link to a moment, a title) to WhatsApp or any app. */
         @JavascriptInterface fun share(text: String) {
             ui.post {
