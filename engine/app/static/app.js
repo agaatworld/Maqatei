@@ -544,9 +544,9 @@ function drawMarks(sk) {
   const p = x => Math.min(100, Math.max(0, x / d * 100)).toFixed(3) + '%';
   const ps = ms.filter(b => b.end != null);
   box.innerHTML = ms.map(b => b.end != null
-    ? `<i class="rg" style="--pc:${PCOL[ps.indexOf(b) % PCOL.length]};left:${p(b.start)};width:max(3px,calc(${p(b.end)} - ${p(b.start)}))"></i>`
+    ? `<i class="rg" style="--pc:${PCOL[ps.indexOf(b) % PCOL.length]};left:${p(b.start)};width:max(8px,calc(${p(b.end)} - ${p(b.start)}))"></i>`
     : `<i class="pt bmk" data-t="${b.start}" style="left:${p(b.start)}"></i>`).join('')
-    + (live ? `<i class="rg live" style="left:${p(live[0])};width:max(3px,calc(${p(live[1])} - ${p(live[0])}))"></i><i class="pt live" style="left:${p(live[0])}"></i>` : '');
+    + (live ? `<i class="rg live" style="left:${p(live[0])};width:max(10px,calc(${p(live[1])} - ${p(live[0])}))"></i><i class="pt live" style="left:${p(live[0])}"></i>` : '');
 }
 function bindSeek(sk) {
   if (!sk || sk.dataset.bound) return; sk.dataset.bound = 1;
