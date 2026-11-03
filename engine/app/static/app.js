@@ -2147,7 +2147,11 @@ const ACT = {
   'ez-file': () => $('#ezFile').click(),
   'ez-paste': async () => {
     const inp = $('#ezIn');
-    try { const txt = await navigator.clipboard.readText(); if (txt) { inp.value = txt.trim(); EZ.ready && EZ.ready(); return; } } catch (e) {}
+    const put = txt => { txt = (txt || '').trim(); if (!txt) return false; inp.value = txt; EZ.ready && EZ.ready(); inp.scrollIntoView({ block: 'center' }); return true; };
+    // inside the phone app the page may not read the clipboard: the app reads it; the computer app asks the engine
+    try { if (window.MaqatiApp && MaqatiApp.clipboardText && put(MaqatiApp.clipboardText())) return; } catch (e) {}
+    try { if (!IS_WEB && !window.MaqatiApp && /^(127\.0\.0\.1|localhost)$/.test(location.hostname) && put((await api('/api/clipboard')).text)) return; } catch (e) {}
+    try { if (put(await navigator.clipboard.readText())) return; } catch (e) {}
     inp.focus(); toast(t('ez_paste_hint'), null, 5000);
   },
   'ez-go': async el => {

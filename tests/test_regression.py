@@ -275,6 +275,7 @@ def main():
               and r2.endswith(".mp4") and r3.endswith(".mp3") and abs(dur(lib / r3) - 60) < 0.5,
               [(j["status"], j["message"], j["result"]) for j in js.values()])
         check("one button needs a link", call("POST", "/api/easy", {"text": "no link here"}, ok=False) == 400)
+        check("the engine never hands its clipboard out except in the desktop app", call("GET", "/api/clipboard") == {"text": ""})
         import functools, http.server, importlib.util, shutil, threading     # a link never seen before: the one task reads it too
         if not importlib.util.find_spec("yt_dlp"):
             print("  skip: new link (no yt-dlp here)")

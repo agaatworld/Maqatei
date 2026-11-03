@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.content.ActivityNotFoundException
+import android.content.ClipboardManager
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -450,6 +451,20 @@ class MainActivity : AppCompatActivity() {
     // ---------- what the page can ask the app to do ----------
     inner class Bridge {
         @JavascriptInterface fun appVersion(): String = BuildConfig.VERSION_NAME
+        /** The «لصق» button: the page itself may not read the clipboard inside the app, so the app reads it. */
+        @JavascriptInterface fun clipboardText(): String {
+            val done = java.util.concurrent.CountDownLatch(1)
+            var out = ""
+            ui.post {
+                try {
+                    val c = (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).primaryClip
+                    if (c != null && c.itemCount > 0) out = c.getItemAt(0).coerceToText(this@MainActivity)?.toString() ?: ""
+                } catch (e: Exception) { }
+                done.countDown()
+            }
+            done.await(2, java.util.concurrent.TimeUnit.SECONDS)
+            return out
+        }
         @JavascriptInterface fun playing(on: Boolean) { EngineService.playing = on }
         /** The page's own background colour for the strips beside the phone's buttons and status bar. */
         @JavascriptInterface fun setBars(hex: String, dark: Boolean) {

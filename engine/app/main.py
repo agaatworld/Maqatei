@@ -1097,6 +1097,26 @@ def save_settings(r):
 _update = {"running": False, "msg": ""}
 
 
+@route("GET", "/api/clipboard")
+def clipboard(r):
+    """The «لصق» button in the computer app: its window may not read the clipboard itself. Only the desktop app, and
+    only for this computer (never for a phone that opened the engine over Wi-Fi)."""
+    if not DESKTOP or r.client_address[0] not in ("127.0.0.1", "::1"):
+        return {"text": ""}
+    try:
+        if sys.platform == "win32":
+            out = subprocess.run(["powershell", "-NoProfile", "-Command", "[Console]::OutputEncoding=[Text.Encoding]::UTF8; Get-Clipboard -Raw"], capture_output=True, timeout=5,
+                                 creationflags=media.NO_WINDOW).stdout
+            txt = out.decode("utf-8", "replace") if out[:3] != b"\xef\xbb\xbf" else out[3:].decode("utf-8", "replace")
+        elif sys.platform == "darwin":
+            txt = subprocess.run(["pbpaste"], capture_output=True, timeout=5).stdout.decode("utf-8", "replace")
+        else:
+            txt = ""
+    except Exception:
+        txt = ""
+    return {"text": txt.strip()[:4000]}
+
+
 @route("GET", "/api/health")
 def health(r):
     ver = media.ytdlp_version()
