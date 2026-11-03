@@ -12,6 +12,7 @@ import hashlib
 import math
 import os
 import sys
+import threading
 
 from . import db
 from . import media
@@ -22,6 +23,7 @@ WEB = os.environ.get("MAQATI_WEB") == "1"
 # how close to the background noise a moment must be to count as a pause (0 = only the noise itself, 1 = speech),
 # and the guard left on each side of the deep silence inside it
 SENS = {"careful": (0.12, 0.05), "normal": (0.2, 0.035), "strong": (0.3, 0.025)}
+_LOCK, _LOCKS = threading.Lock(), {}
 KEEP_MIN = 0.06                   # even the shortest pause keeps this much: the words never touch
 
 
@@ -37,18 +39,29 @@ def cached(src):
 
 def measure(src, cancel=None, progress=None, total=None):
     """Loudness every 10 ms (mean power), saved next to the database. Returns the saved file."""
+    with _LOCK:                          # the player and a task may ask for the same file at once: measure it once
+        lk = _LOCKS.setdefault(_key(src), threading.Lock())
+    with lk:
+        return _measure(src, cancel, progress, total)
+
+
+def _measure(src, cancel, progress, total):
     f = cached(src)
     if f:
         return f
     CACHE.mkdir(parents=True, exist_ok=True)
     out = CACHE / (_key(src) + ".f32")
-    tmp = CACHE / (out.stem + ".part.f32")
+    tmp = CACHE / (f"{out.stem}.{os.getpid()}-{threading.get_ident()}.part.f32")
     # power, averaged over about 10 ms, read every 10 ms (sharp: a silence keeps its real length)
-    media.ffmpeg(["-i", str(src), "-map", "0:a:0", "-vn", "-af",
-                  "aformat=channel_layouts=mono,aresample=16000,aeval=val(0)*val(0),lowpass=f=16:p=1,"
-                  f"aresample={int(1 / STEP)}:filter_size=1:phase_shift=0,aeval=abs(val(0))", "-c:a", "pcm_f32le", "-f", "f32le", str(tmp)],
-                 cancel, total, progress)
-    os.replace(tmp, out)
+    try:
+        media.ffmpeg(["-i", str(src), "-map", "0:a:0", "-vn", "-af",
+                      "aformat=channel_layouts=mono,aresample=16000,aeval=val(0)*val(0),lowpass=f=16:p=1,"
+                      f"aresample={int(1 / STEP)}:filter_size=1:phase_shift=0,aeval=abs(val(0))", "-c:a", "pcm_f32le", "-f", "f32le", str(tmp)],
+                     cancel, total, progress)
+        os.replace(tmp, out)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
     return out
 
 

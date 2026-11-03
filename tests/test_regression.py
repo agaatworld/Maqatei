@@ -225,6 +225,14 @@ def main():
         got = dur(lib / ja[0]["result"]) if ja and ja[0]["status"] == "done" else -1
         check("copy without silences is shorter by exactly the skipped time", abs(got - (95 - sil["saved"])) < 0.15,
               (got, sil["saved"], ja and ja[0]["message"], ja and ja[0]["result"] and decoded(lib / ja[0]["result"]), FFV))
+        fresh = ja[0]["result"]                              # not measured yet: the player and two tasks ask at once
+        last = max(j["id"] for j in call("GET", "/api/jobs"))
+        call("GET", "/api/silence?path=" + quote(fresh))
+        call("POST", "/api/nosil", {"path": fresh})
+        call("POST", "/api/nosil", {"path": fresh, "sil_min": 0.3})
+        js2 = wait_jobs(lambda j: j["id"] > last)
+        check("the same file measured at once by several tasks: no error", js2 and all(j["status"] == "done" for j in js2),
+              [(j["kind"], j["status"], j["message"]) for j in js2])
         jv = [j for j in js if j["item_id"] == v]
         check("video with no silences says so", jv and jv[0]["status"] == "done" and not jv[0]["result"] and "سكتات" in jv[0]["message"], jv and (jv[0]["status"], jv[0]["message"]))
         call("POST", "/api/bookmarks/action", {"ids": [ba], "action": "mp3", "nosil": True})
@@ -267,6 +275,16 @@ def main():
               and r2.endswith(".mp4") and r3.endswith(".mp3") and abs(dur(lib / r3) - 60) < 0.5,
               [(j["status"], j["message"], j["result"]) for j in js.values()])
         check("one button needs a link", call("POST", "/api/easy", {"text": "no link here"}, ok=False) == 400)
+        import functools, http.server, threading                # a link never seen before: the one task reads it too
+        srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(http.server.SimpleHTTPRequestHandler,
+                                              directory=str((lib / iv["file"]).parent)))
+        threading.Thread(target=srv.serve_forever, daemon=True).start()
+        url = f"http://127.0.0.1:{srv.server_address[1]}/{quote((lib / iv['file']).name)}"
+        e4 = call("POST", "/api/easy", {"text": "شاهد هذا " + url, "want": "audio"})["id"]
+        j4 = wait_jobs(lambda j: j["id"] == e4, 120)
+        srv.shutdown()
+        check("one button with a new link starts (does not wait forever) and gives the sound",
+              j4 and j4[0]["status"] == "done" and (j4[0]["result"] or "").endswith(".mp3"), j4 and (j4[0]["status"], j4[0]["message"]))
 
         print("convert and tasks")
         call("POST", f"/api/items/{v}/action", {"action": "convert"})

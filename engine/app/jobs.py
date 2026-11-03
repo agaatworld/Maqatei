@@ -108,8 +108,8 @@ def _tick():
             if not item:
                 set_job(j["id"], status="error", message=M("item_deleted"))
                 continue
-            if j["kind"] != "info" and not item["dir"]:
-                continue                  # still reading the link's title
+            if j["kind"] not in ("info", "easy") and not item["dir"]:
+                continue                  # still reading the link's title (the one-button task reads it itself)
         busy[c] = busy.get(c, 0) + 1
         ev = threading.Event()
         with _lock:
